@@ -2,6 +2,11 @@ from skgeom import *
 from skgeom.draw import *
 from matplotlib import pyplot as plt
 
+# Documentation and Demos used in this code:
+# https://matplotlib.org/stable/gallery/event_handling/coords_demo.html
+# https://scikit-geometry.github.io/scikit-geometry/introduction.html
+# general_polygon.py
+
 class VisPoly:
     def __init__(self, line, arr):
         self.line = line
