@@ -13,7 +13,8 @@ class VisPoly:
         self.xs = line.get_xdata()
         self.ys = line.get_ydata()
         self.arran = arr
-        self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
+        #self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
+        self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
 
     def __call__(self, event):
         print('click', event)
