@@ -2,7 +2,7 @@ from skgeom import *
 from skgeom.draw import *
 from matplotlib import pyplot as plt
 
-class LineBuilder:
+class VisPoly:
     def __init__(self, line, arr):
         self.line = line
         self.xs = line.get_xdata()
@@ -131,6 +131,6 @@ for ha in arr.halfedges:
 
 #ax.set_title('click to build line segments')
 line, = ax.plot(0, 0)  # empty line
-linebuilder = LineBuilder(line, arr)
+vis_poly = VisPoly(line, arr)
 
 plt.show()
