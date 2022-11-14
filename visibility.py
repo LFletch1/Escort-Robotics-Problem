@@ -11,50 +11,35 @@ class VisPoly:
     def __init__(self, line, arr):
         self.line = line
         self.xs = line.get_xdata()
+        print("Setting self xs to ", self.xs)
+        self.ys = line.get_ydata()
+        print("Setting self yx to ", self.ys)
         self.ys = line.get_ydata()
         self.arran = arr
-        #self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
-        self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
+        self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
+        #self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
 
     def __call__(self, event):
         print('click', event)
+        # check if click is inside of line axes
         if event.inaxes!=self.line.axes: return
-        self.xs = event.xdata
+        # update position of x,y point on screen
+        self.xs = event.xdata 
         self.ys = event.ydata
         self.line.set_data(self.xs, self.ys)
-        #self.env_res()
+        # clear environment
         plt.cla()
         self.env_res()
+        # plot point of escort
         plt.plot(event.xdata, event.ydata, '.')
+        # compute viz of escort
         vis_p = self.compute_visib_pursue()
         self.compute_shadows(vis_p)
         self.line.figure.canvas.draw()
 
     def env_res(self):
-        M = 50
-
-        boundary = [
-            Segment2(Point2(-M, -M), Point2(-M, M)), Segment2(Point2(-M, M), Point2(M, M)),
-            Segment2(Point2(M, M), Point2(M, -M)), Segment2(Point2(M, -M), Point2(-M, -M))
-        ]
-
-        box = [
-            Segment2(Point2(30, -30), Point2(-30, 30)), #Segment2(Point2(-30, 30), Point2(30, 30)),
-            Segment2(Point2(30, 30), Point2(30, -30)), Segment2(Point2(30, -30), Point2(-30, -30))
-        ]
-
-        arr = arrangement.Arrangement()
-
-        for s in boundary:
-            arr.insert(s)
-
-        for s in box:
-            arr.insert(s)
-
-        for ha in arr.halfedges:
+        for ha in self.arran.halfedges:
             draw(ha.curve())
-
-        self.arran = arr
 
 
     def compute_visib_pursue(self):
@@ -64,8 +49,21 @@ class VisPoly:
         face_p = arr.find(p)
         vs_p = vs.compute_visibility(p, face_p)
 
+
         for j in vs_p.halfedges:
-            draw(j.curve(), color='red', visible_point = False)
+
+            # compute midpoint of newly added point
+            # if midpoint is in floating space, it is an occlusion ray
+            # this method is not working properly yet
+            # i will also move this to another function
+            midpoint = Point2(  ((j.curve()[0].x() + j.curve()[0].y()) / 2),((j.curve()[1].x() + j.curve()[1].y()) / 2) ) 
+
+
+            # if segment is occlusion ray 
+            if ( type(self.arran.find(midpoint)) is skgeom._skgeom.arrangement.Face ): 
+                draw(j.curve(), color='black', visible_point = False)
+            else:
+                draw(j.curve(), color='red', visible_point = False)
         
         return vs_p
 
@@ -91,7 +89,7 @@ class VisPoly:
 
     def compute_shadows(self, visible_arr):
         #shadows = self.arran.difference(visible_arr)
-
+        #print("computing shadows")
         x_polyset = self.build_polygon_set_from_arrangement(visible_arr)
         y_polyset = self.build_polygon_set_from_arrangement(self.arran)
 
@@ -104,39 +102,39 @@ class VisPoly:
 
 
 
+if __name__ == '__main__':
+
+    fig, ax = plt.subplots()
+
+    # Set up environment
+    M = 50
+
+    boundary = [
+        Segment2(Point2(-M, -M), Point2(-M, M)), Segment2(Point2(-M, M), Point2(M, M)),
+        Segment2(Point2(M, M), Point2(M, -M)), Segment2(Point2(M, -M), Point2(-M, -M))
+    ]
+
+    box = [
+        Segment2(Point2(30, -30), Point2(-30, 30)), #Segment2(Point2(-30, 30), Point2(30, 30)),
+        Segment2(Point2(30, 30), Point2(30, -30)), Segment2(Point2(30, -30), Point2(-30, -30))
+    ]
+
+    arr = arrangement.Arrangement()
+
+    for s in boundary:
+        arr.insert(s)
+
+    for s in box:
+        arr.insert(s)
+
+    for ha in arr.halfedges:
+        draw(ha.curve())
+    
 
 
 
-fig, ax = plt.subplots()
+    #ax.set_title('click to build line segments')
+    line, = ax.plot(0, 0)  # empty line
+    vis_poly = VisPoly(line, arr)
 
-# Set up enviorment
-M = 50
-
-boundary = [
-    Segment2(Point2(-M, -M), Point2(-M, M)), Segment2(Point2(-M, M), Point2(M, M)),
-    Segment2(Point2(M, M), Point2(M, -M)), Segment2(Point2(M, -M), Point2(-M, -M))
-]
-
-box = [
-    Segment2(Point2(30, -30), Point2(-30, 30)), #Segment2(Point2(-30, 30), Point2(30, 30)),
-    Segment2(Point2(30, 30), Point2(30, -30)), Segment2(Point2(30, -30), Point2(-30, -30))
-]
-
-arr = arrangement.Arrangement()
-
-for s in boundary:
-    arr.insert(s)
-
-for s in box:
-    arr.insert(s)
-
-for ha in arr.halfedges:
-    draw(ha.curve())
-
-
-
-#ax.set_title('click to build line segments')
-line, = ax.plot(0, 0)  # empty line
-vis_poly = VisPoly(line, arr)
-
-plt.show()
+    plt.show()
