@@ -17,7 +17,26 @@ class VisPoly:
         self.ys = line.get_ydata()
         self.arran = gp.arrangement
         self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
+        self.full_polyset = self.cover_holes()
         # self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
+    
+    def cover_holes(self):
+        # Each poly is a PolygonWithHoles
+
+        holeArrangement = arrangement.Arrangement()
+
+        for i, poly in enumerate(self.gp.polygons):
+            # boundary = poly.outer_boundary()
+            # for e in boundary.edges:
+            #     holeArrangement.insert(e)
+
+            for j, hole in enumerate(poly.holes):
+                print(hole)
+                for e in hole.edges:
+                    holeArrangement.insert(e)
+        y_polyset = self.build_polygon_set_from_arrangement(self.arran)
+        z_polyset = self.build_polygon_set_from_arrangement(holeArrangement)
+        return y_polyset.difference(z_polyset)
 
     def __call__(self, event):
         # print('click', event)
@@ -46,13 +65,7 @@ class VisPoly:
 
     def occlusion(self,j,p):
         # calculate if given half edge is occlusion ray
-        # print(type(j.curve()))
-        # return j.curve().collinear_has_on(p)
-        #return j.curve().is_degenerate()
-
-        # j is a halfedge
         # if j is NOT in the arrangement, color it red
-        print(type(j.curve()[0]))
 
         return (not isinstance(self.gp.arrangement.find(j.curve()[0]) , arrangement.Vertex)
         or not isinstance( self.gp.arrangement.find(j.curve()[1]) , arrangement.Vertex) ) 
@@ -96,9 +109,10 @@ class VisPoly:
         # shadows = self.arran.difference(visible_arr)
         #print("computing shadows")
         x_polyset = self.build_polygon_set_from_arrangement(visible_arr)
+        # replace this with self.arran - holes
         y_polyset = self.build_polygon_set_from_arrangement(self.arran)
 
-        local = y_polyset.difference(x_polyset)
+        local = self.full_polyset.difference(x_polyset)
         for pol in local.polygons:
             draw(pol, facecolor="lightblue")
         #gps = [GeneralPolygon([x]) for x in local.polygons]
