@@ -1,6 +1,7 @@
 from skgeom import *
 from skgeom.draw import *
 from matplotlib import pyplot as plt
+from general_polygon import GeneralPolygon
 
 # Documentation and Demos used in this code:
 # https://matplotlib.org/stable/gallery/event_handling/coords_demo.html
@@ -8,21 +9,24 @@ from matplotlib import pyplot as plt
 # general_polygon.py
 
 class VisPoly:
-    def __init__(self, line, arr):
+    def __init__(self, line, gp):
         self.line = line
         self.xs = line.get_xdata()
         print("Setting self xs to ", self.xs)
         self.ys = line.get_ydata()
         print("Setting self yx to ", self.ys)
         self.ys = line.get_ydata()
-        self.arran = arr
+        self.arran = gp.arrangement
         self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
-        #self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
+        # self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
 
     def __call__(self, event):
         print('click', event)
         # check if click is inside of line axes
         if event.inaxes!=self.line.axes: return
+        if not gp.contains(event.xdata, event.ydata): 
+            print("NOT IN BOUNDS")
+            return
         # update position of x,y point on screen
         self.xs = event.xdata 
         self.ys = event.ydata
@@ -34,7 +38,7 @@ class VisPoly:
         plt.plot(event.xdata, event.ydata, '.')
         # compute viz of escort
         vis_p = self.compute_visib_pursue()
-        self.compute_shadows(vis_p)
+        # self.compute_shadows(vis_p)
         self.line.figure.canvas.draw()
 
     def env_res(self):
@@ -101,40 +105,42 @@ class VisPoly:
         #    draw(j.curve(), color="green", visible_arr = False)
 
 
-
-if __name__ == '__main__':
-
-    fig, ax = plt.subplots()
-
+def env_setup():
     # Set up environment
     M = 50
-
     boundary = [
         Segment2(Point2(-M, -M), Point2(-M, M)), Segment2(Point2(-M, M), Point2(M, M)),
         Segment2(Point2(M, M), Point2(M, -M)), Segment2(Point2(M, -M), Point2(-M, -M))
     ]
-
     box = [
         Segment2(Point2(30, -30), Point2(-30, 30)), #Segment2(Point2(-30, 30), Point2(30, 30)),
         Segment2(Point2(30, 30), Point2(30, -30)), Segment2(Point2(30, -30), Point2(-30, -30))
     ]
-
     arr = arrangement.Arrangement()
-
     for s in boundary:
         arr.insert(s)
-
     for s in box:
         arr.insert(s)
-
     for ha in arr.halfedges:
         draw(ha.curve())
-    
+    return arr 
+
+if __name__ == '__main__':
+    fig, ax = plt.subplots()
+
+    gp = GeneralPolygon.load_from_json("Envs/octbrick_env.json", verbose=True)
+    gp.build_arrangement(verbose=True)
+
+    # Draw the arrangement
+    for he in gp.arrangement.halfedges:
+        draw(he.curve(), visible_point=False)
 
 
+    # arr = env_setup()
+    arr = gp.arrangement
 
-    #ax.set_title('click to build line segments')
+    # ax.set_title('click to build line segments')
     line, = ax.plot(0, 0)  # empty line
-    vis_poly = VisPoly(line, arr)
+    vis_poly = VisPoly(line, gp)
 
     plt.show()
