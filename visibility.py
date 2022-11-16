@@ -2,6 +2,7 @@ from skgeom import *
 from skgeom.draw import *
 from matplotlib import pyplot as plt
 from general_polygon import GeneralPolygon
+from scikit_utils import *
 import time
 
 # Documentation and Demos used in this code:
@@ -17,26 +18,8 @@ class VisPoly:
         self.ys = line.get_ydata()
         self.arran = gp.arrangement
         self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
-        self.full_polyset = self.cover_holes()
         # self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
-    
-    def cover_holes(self):
-        # Each poly is a PolygonWithHoles
-
-        holeArrangement = arrangement.Arrangement()
-
-        for i, poly in enumerate(self.gp.polygons):
-            # boundary = poly.outer_boundary()
-            # for e in boundary.edges:
-            #     holeArrangement.insert(e)
-
-            for j, hole in enumerate(poly.holes):
-                print(hole)
-                for e in hole.edges:
-                    holeArrangement.insert(e)
-        y_polyset = self.build_polygon_set_from_arrangement(self.arran)
-        z_polyset = self.build_polygon_set_from_arrangement(holeArrangement)
-        return y_polyset.difference(z_polyset)
+        self.full_polyset = self.remove_holes()
 
     def __call__(self, event):
         # print('click', event)
@@ -63,10 +46,23 @@ class VisPoly:
         for ha in self.arran.halfedges:
             draw(ha.curve())
 
+    def remove_holes(self):
+        # this function is used to calculate full polyset without holes
+        # for use in shadow drawing function
+        holeArrangement = arrangement.Arrangement()
+        for i, poly in enumerate(self.gp.polygons):
+            for j, hole in enumerate(poly.holes):
+                for e in hole.edges:
+                    holeArrangement.insert(e)
+        y_polyset = build_polygon_set_from_arrangement(self.arran)
+        hole_polyset = build_polygon_set_from_arrangement(holeArrangement)
+        return y_polyset.difference(hole_polyset)
+
     def occlusion(self,j,p):
         # calculate if given half edge is occlusion ray
         # if j is NOT in the arrangement, color it red
-
+        # still not working
+        # right now it only returns if the halfedge has a point that is NOT a vertex
         return (not isinstance(self.gp.arrangement.find(j.curve()[0]) , arrangement.Vertex)
         or not isinstance( self.gp.arrangement.find(j.curve()[1]) , arrangement.Vertex) ) 
 
@@ -82,35 +78,12 @@ class VisPoly:
                 draw(j.curve(), color='red', visible_point = False)
             else:
                 draw(j.curve(), color='black', visible_point = False)
-        # print(set(gp.arrangement.halfedges).union(set(vs_p.halfedges)) )
         return vs_p
-
-    def build_polygon_set_from_arrangement(self, arr):
-        polys = []
-        for f in arr.faces:
-            if f.is_unbounded():
-                continue
-            
-            if f.has_outer_ccb():
-                poly_pts= []
-                outer_ccb_circulator = f.outer_ccb
-                first = next(outer_ccb_circulator)
-                circ = next(outer_ccb_circulator)
-                while circ != first:
-                    poly_pts.append(circ.source().point())
-                    circ = next(outer_ccb_circulator)
-                poly_pts.append(circ.source().point())
-                polys.append(skgeom.Polygon(poly_pts))
-
-        return skgeom.PolygonSet(polys)  
-
 
     def compute_shadows(self, visible_arr):
         # shadows = self.arran.difference(visible_arr)
         #print("computing shadows")
-        x_polyset = self.build_polygon_set_from_arrangement(visible_arr)
-        # replace this with self.arran - holes
-        y_polyset = self.build_polygon_set_from_arrangement(self.arran)
+        x_polyset = build_polygon_set_from_arrangement(visible_arr)
 
         local = self.full_polyset.difference(x_polyset)
         for pol in local.polygons:
@@ -149,7 +122,6 @@ if __name__ == '__main__':
     # Draw the arrangement
     for he in gp.arrangement.halfedges:
         draw(he.curve(), visible_point=False)
-
 
     # arr = env_setup()
     arr = gp.arrangement
