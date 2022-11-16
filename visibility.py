@@ -2,6 +2,7 @@ from skgeom import *
 from skgeom.draw import *
 from matplotlib import pyplot as plt
 from general_polygon import GeneralPolygon
+import time
 
 # Documentation and Demos used in this code:
 # https://matplotlib.org/stable/gallery/event_handling/coords_demo.html
@@ -10,21 +11,19 @@ from general_polygon import GeneralPolygon
 
 class VisPoly:
     def __init__(self, line, gp):
+        self.gp = gp
         self.line = line
         self.xs = line.get_xdata()
-        print("Setting self xs to ", self.xs)
-        self.ys = line.get_ydata()
-        print("Setting self yx to ", self.ys)
         self.ys = line.get_ydata()
         self.arran = gp.arrangement
         self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
         # self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
 
     def __call__(self, event):
-        print('click', event)
+        # print('click', event)
         # check if click is inside of line axes
         if event.inaxes!=self.line.axes: return
-        if not gp.contains(event.xdata, event.ydata): 
+        if not self.gp.contains(event.xdata, event.ydata): 
             print("NOT IN BOUNDS")
             return
         # update position of x,y point on screen
@@ -38,37 +37,39 @@ class VisPoly:
         plt.plot(event.xdata, event.ydata, '.')
         # compute viz of escort
         vis_p = self.compute_visib_pursue()
-        # self.compute_shadows(vis_p)
+        self.compute_shadows(vis_p)
         self.line.figure.canvas.draw()
 
     def env_res(self):
         for ha in self.arran.halfedges:
             draw(ha.curve())
 
+    def occlusion(self,j,p):
+        # calculate if given half edge is occlusion ray
+        # print(type(j.curve()))
+        # return j.curve().collinear_has_on(p)
+        #return j.curve().is_degenerate()
+
+        # j is a halfedge
+        # if j is NOT in the arrangement, color it red
+        print(type(j.curve()[0]))
+
+        return (not isinstance(self.gp.arrangement.find(j.curve()[0]) , arrangement.Vertex)
+        or not isinstance( self.gp.arrangement.find(j.curve()[1]) , arrangement.Vertex) ) 
 
     def compute_visib_pursue(self):
         vs = RotationalSweepVisibility(self.arran)
-
         p = Point2(self.xs, self.ys)
         face_p = arr.find(p)
         vs_p = vs.compute_visibility(p, face_p)
 
-
         for j in vs_p.halfedges:
-
-            # compute midpoint of newly added point
-            # if midpoint is in floating space, it is an occlusion ray
-            # this method is not working properly yet
-            # i will also move this to another function
-            midpoint = Point2(  ((j.curve()[0].x() + j.curve()[0].y()) / 2),((j.curve()[1].x() + j.curve()[1].y()) / 2) ) 
-
-
             # if segment is occlusion ray 
-            if ( type(self.arran.find(midpoint)) is skgeom._skgeom.arrangement.Face ): 
-                draw(j.curve(), color='black', visible_point = False)
-            else:
+            if ( self.occlusion(j,p) ): 
                 draw(j.curve(), color='red', visible_point = False)
-        
+            else:
+                draw(j.curve(), color='black', visible_point = False)
+        # print(set(gp.arrangement.halfedges).union(set(vs_p.halfedges)) )
         return vs_p
 
     def build_polygon_set_from_arrangement(self, arr):
@@ -92,7 +93,7 @@ class VisPoly:
 
 
     def compute_shadows(self, visible_arr):
-        #shadows = self.arran.difference(visible_arr)
+        # shadows = self.arran.difference(visible_arr)
         #print("computing shadows")
         x_polyset = self.build_polygon_set_from_arrangement(visible_arr)
         y_polyset = self.build_polygon_set_from_arrangement(self.arran)
@@ -101,7 +102,7 @@ class VisPoly:
         for pol in local.polygons:
             draw(pol, facecolor="lightblue")
         #gps = [GeneralPolygon([x]) for x in local.polygons]
-        #for j in shadows.halfedges:
+        # for j in shadows.halfedges:
         #    draw(j.curve(), color="green", visible_arr = False)
 
 
