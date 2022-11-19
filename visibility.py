@@ -11,9 +11,10 @@ import time
 # general_polygon.py
 
 class VisPoly:
-    def __init__(self, line, gp):
+    def __init__(self, line, gp, halve):
         self.gp = gp
         self.line = line
+        self.halves = halve
         self.xs = line.get_xdata()
         self.ys = line.get_ydata()
         self.arran = gp.arrangement
@@ -49,6 +50,10 @@ class VisPoly:
     def remove_holes(self):
         # this function is used to calculate full polyset without holes
         # for use in shadow drawing function
+
+        #return build_polygon_set_from_arrangement(arrangement.Arrangement())
+
+
         holeArrangement = arrangement.Arrangement()
         for i, poly in enumerate(self.gp.polygons):
             for j, hole in enumerate(poly.holes):
@@ -63,8 +68,20 @@ class VisPoly:
         # if j is NOT in the arrangement, color it red
         # still not working
         # right now it only returns if the halfedge has a point that is NOT a vertex
-        return (not isinstance(self.gp.arrangement.find(j.curve()[0]) , arrangement.Vertex)
-        or not isinstance( self.gp.arrangement.find(j.curve()[1]) , arrangement.Vertex) ) 
+
+
+        # Creates segment and sees if it overlaps
+        seg = Segment2(j.source().point(), j.target().point())
+
+        for edge in self.halves:
+            if isinstance(intersection(seg, edge), Segment2):
+                return True
+        return False
+
+
+        # orginal
+        #return (not isinstance(self.gp.arrangement.find(j.curve()[0]) , arrangement.Vertex) 
+        #or not isinstance( self.gp.arrangement.find(j.curve()[1]) , arrangement.Vertex)) 
 
     def compute_visib_pursue(self):
         vs = RotationalSweepVisibility(self.arran)
@@ -73,7 +90,7 @@ class VisPoly:
         vs_p = vs.compute_visibility(p, face_p)
 
         for j in vs_p.halfedges:
-            # if segment is occlusion ray 
+            # if segment is occlusion ray
             if ( self.occlusion(j,p) ): 
                 draw(j.curve(), color='red', visible_point = False)
             else:
@@ -119,15 +136,20 @@ if __name__ == '__main__':
     gp = GeneralPolygon.load_from_json("Envs/octbrick_env.json", verbose=True)
     gp.build_arrangement(verbose=True)
 
+    np_half = np.array([])
+
     # Draw the arrangement
     for he in gp.arrangement.halfedges:
+        #np_half = np.append(np_half, (he.source().point().x(), he.source().point().y(), he.target().point().x(), he.target().point().y()))
+        np_half = np.append(np_half, Segment2(he.source().point(), he.target().point()))
         draw(he.curve(), visible_point=False)
-
+        
+    #np_half = np_half.reshape([-1, 4])
     # arr = env_setup()
     arr = gp.arrangement
 
     # ax.set_title('click to build line segments')
     line, = ax.plot(0, 0)  # empty line
-    vis_poly = VisPoly(line, gp)
+    vis_poly = VisPoly(line, gp, np_half)
 
     plt.show()

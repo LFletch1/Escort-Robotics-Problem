@@ -168,7 +168,7 @@ class GeneralPolygon(sg.PolygonSet):
             # print face information from arrangement
             for f in self.arrangement.faces:
                 print("////////////////////////////////////")
-                print(face_details(f))
+                #print(face_details(f))
             print("////////////////////////////////////")
 
 
