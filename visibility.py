@@ -18,15 +18,15 @@ class VisPoly:
         self.xs = line.get_xdata()
         self.ys = line.get_ydata()
         self.arran = gp.arrangement
-        self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
-        #self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
         self.full_polyset = self.remove_holes()
+        self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
+        # self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
+        self.env_res()
 
     def __call__(self, event):
         # print('click', event)
         # check if click is inside of line axes
-        if event.inaxes!=self.line.axes: return
-        if not self.gp.contains(event.xdata, event.ydata): 
+        if event.inaxes!=self.line.axes or not self.gp.contains(event.xdata, event.ydata): 
             print("NOT IN BOUNDS")
             return
         # update position of x,y point on screen
@@ -39,12 +39,12 @@ class VisPoly:
         # plot point of escort
         plt.plot(event.xdata, event.ydata, '.')
         # compute viz of escort
-        vis_p, edges = self.compute_visib_pursue()
-        self.compute_visib_shadows(edges)
+        vis_p = self.compute_visib_pursue()
         self.compute_shadows(vis_p)
         self.line.figure.canvas.draw()
 
     def env_res(self):
+        ax.set_title('click to build line segments')
         for ha in self.arran.halfedges:
             draw(ha.curve())
 
@@ -52,7 +52,6 @@ class VisPoly:
         # this function is used to calculate full polyset without holes
         # for use in shadow drawing function
 
-        #return build_polygon_set_from_arrangement(arrangement.Arrangement())
         holeArrangement = arrangement.Arrangement()
         for i, poly in enumerate(self.gp.polygons):
             for j, hole in enumerate(poly.holes):
@@ -62,25 +61,24 @@ class VisPoly:
         hole_polyset = build_polygon_set_from_arrangement(holeArrangement)
         return y_polyset.difference(hole_polyset)
 
-    def occlusion(self,j,p):
-        # calculate if given half edge is occlusion ray
-        # if j is NOT in the arrangement, color it red
-        # still not working
-        # right now it only returns if the halfedge has a point that is NOT a vertex
-
-
+    def compute_occlusion(self,j,p):
         # Creates segment and sees if it overlaps
         seg = Segment2(j.source().point(), j.target().point())
 
         for edge in self.halves:
             if isinstance(intersection(seg, edge), Segment2):
-                return True
-        return False
+                return False
+        return True
 
-
-        # orginal
-        #return (not isinstance(self.gp.arrangement.find(j.curve()[0]) , arrangement.Vertex) 
-        #or not isinstance( self.gp.arrangement.find(j.curve()[1]) , arrangement.Vertex)) 
+    def compute_unsafe_zone(self,j):
+        # divide segment in to 10 points for now
+        pt1 = np.array( (j.curve()[0].x(), j.curve()[0].y()) )
+        pt2 = np.array( (j.curve()[1].x(), j.curve()[1].y()) )
+        # replace 10 with number proportional to length of segment using np.linalg.norm
+        points = np.linspace( pt1, pt2 , 10)
+        # for p in points:
+        #     draw(p, color='blue', visible_point = True)
+        print("POINTS:", points)
 
     def compute_visib_pursue(self):
         vs = RotationalSweepVisibility(self.arran)
@@ -88,33 +86,14 @@ class VisPoly:
         face_p = arr.find(p)
         vs_p = vs.compute_visibility(p, face_p)
 
-        shadow_edges = np.array([])
-
         for j in vs_p.halfedges:
             # if segment is occlusion ray
-            if (self.occlusion(j,p)): 
+            if ( self.compute_occlusion(j,p) ): 
                 draw(j.curve(), color='red', visible_point = False)
-                shadow_edges = np.append(shadow_edges, j)
+                self.compute_unsafe_zone(j)
             else:
                 draw(j.curve(), color='black', visible_point = False)
-        return vs_p, shadow_edges
-
-    def compute_visib_shadows(self, halfedges):
-        for half in halfedges:
-            vs = RotationalSweepVisibility(self.arran)
-
-            # NOT working - I think we need to sample in a different way to get a proper face?
-            s1 = half.source().point()
-            s2 = half.target().point()
-
-            face_s1 = self.arran.find(s1)
-            face_s2 = self.arran.find(s2)
-
-            #for s in vs_s1.halfedges:
-            #    draw(s.curve(), color='green', visible_point = False)
-            #for s in  vs_s2.halfedges:
-            #    draw(s.curve(), color='green', visible_point = False)   
-
+        return vs_p
 
     def compute_shadows(self, visible_arr):
         # shadows = self.arran.difference(visible_arr)
@@ -167,8 +146,8 @@ if __name__ == '__main__':
     # arr = env_setup()
     arr = gp.arrangement
 
-    # ax.set_title('click to build line segments')
     line, = ax.plot(0, 0)  # empty line
     vis_poly = VisPoly(line, gp, np_half)
+
 
     plt.show()
