@@ -39,7 +39,8 @@ class VisPoly:
         # plot point of escort
         plt.plot(event.xdata, event.ydata, '.')
         # compute viz of escort
-        vis_p = self.compute_visib_pursue()
+        vis_p, vis_shadow = self.compute_visib_pursue()
+        self.compute_shadow_vis(vis_shadow)
         self.compute_shadows(vis_p)
         self.line.figure.canvas.draw()
 
@@ -70,15 +71,30 @@ class VisPoly:
                 return False
         return True
 
-    def compute_unsafe_zone(self,j):
+    def compute_unsafe_zone(self,j, visibility):
         # divide segment in to 10 points for now
         pt1 = np.array( (j.curve()[0].x(), j.curve()[0].y()) )
         pt2 = np.array( (j.curve()[1].x(), j.curve()[1].y()) )
         # replace 10 with number proportional to length of segment using np.linalg.norm
-        points = np.linspace( pt1, pt2 , 10)
+        points = np.linspace( pt1, pt2 , 10)[1:-1]
+
+        #print("POINTS:", points)
+
+        visibile_edges = np.array([])
+
+        for point in points:
+
+            current_point = Point2(point[0], point[1])
+            current_face = arr.find(current_point)
+            vs_current = visibility.compute_visibility(current_point, current_face)
+
+            visibile_edges = np.append(visibile_edges, vs_current)
+
         # for p in points:
         #     draw(p, color='blue', visible_point = True)
-        print("POINTS:", points)
+
+        return visibile_edges
+        
 
     def compute_visib_pursue(self):
         vs = RotationalSweepVisibility(self.arran)
@@ -86,14 +102,29 @@ class VisPoly:
         face_p = arr.find(p)
         vs_p = vs.compute_visibility(p, face_p)
 
+
+        unsafe_zones = np.array([])
+
         for j in vs_p.halfedges:
             # if segment is occlusion ray
             if ( self.compute_occlusion(j,p) ): 
                 draw(j.curve(), color='red', visible_point = False)
-                self.compute_unsafe_zone(j)
+                unsafe = self.compute_unsafe_zone(j, vs)
+
+                unsafe_zones = np.append(unsafe_zones, unsafe)
             else:
                 draw(j.curve(), color='black', visible_point = False)
-        return vs_p
+        return vs_p, unsafe_zones
+
+
+    def compute_shadow_vis(self, shadow_vis_edges):
+
+        for vis in shadow_vis_edges:
+            polyset = build_polygon_set_from_arrangement(vis)
+
+            for poly in polyset.polygons:
+                draw(poly, facecolor = "lightgreen")
+
 
     def compute_shadows(self, visible_arr):
         # shadows = self.arran.difference(visible_arr)
@@ -131,7 +162,7 @@ def env_setup():
 if __name__ == '__main__':
     fig, ax = plt.subplots()
 
-    gp = GeneralPolygon.load_from_json("Envs/octbrick_env.json", verbose=True)
+    gp = GeneralPolygon.load_from_json("Envs/tetris_env.json", verbose=True)
     gp.build_arrangement(verbose=True)
 
     np_half = np.array([])
