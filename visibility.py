@@ -19,7 +19,7 @@ class VisPoly:
         self.ys = line.get_ydata()
         self.arran = gp.arrangement
         self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
-        # self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
+        #self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
         self.full_polyset = self.remove_holes()
 
     def __call__(self, event):
@@ -39,7 +39,8 @@ class VisPoly:
         # plot point of escort
         plt.plot(event.xdata, event.ydata, '.')
         # compute viz of escort
-        vis_p = self.compute_visib_pursue()
+        vis_p, edges = self.compute_visib_pursue()
+        self.compute_visib_shadows(edges)
         self.compute_shadows(vis_p)
         self.line.figure.canvas.draw()
 
@@ -52,8 +53,6 @@ class VisPoly:
         # for use in shadow drawing function
 
         #return build_polygon_set_from_arrangement(arrangement.Arrangement())
-
-
         holeArrangement = arrangement.Arrangement()
         for i, poly in enumerate(self.gp.polygons):
             for j, hole in enumerate(poly.holes):
@@ -89,13 +88,33 @@ class VisPoly:
         face_p = arr.find(p)
         vs_p = vs.compute_visibility(p, face_p)
 
+        shadow_edges = np.array([])
+
         for j in vs_p.halfedges:
             # if segment is occlusion ray
-            if ( self.occlusion(j,p) ): 
+            if (self.occlusion(j,p)): 
                 draw(j.curve(), color='red', visible_point = False)
+                shadow_edges = np.append(shadow_edges, j)
             else:
                 draw(j.curve(), color='black', visible_point = False)
-        return vs_p
+        return vs_p, shadow_edges
+
+    def compute_visib_shadows(self, halfedges):
+        for half in halfedges:
+            vs = RotationalSweepVisibility(self.arran)
+
+            # NOT working - I think we need to sample in a different way to get a proper face?
+            s1 = half.source().point()
+            s2 = half.target().point()
+
+            face_s1 = self.arran.find(s1)
+            face_s2 = self.arran.find(s2)
+
+            #for s in vs_s1.halfedges:
+            #    draw(s.curve(), color='green', visible_point = False)
+            #for s in  vs_s2.halfedges:
+            #    draw(s.curve(), color='green', visible_point = False)   
+
 
     def compute_shadows(self, visible_arr):
         # shadows = self.arran.difference(visible_arr)
