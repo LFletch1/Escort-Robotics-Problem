@@ -87,7 +87,8 @@ class GeneralPolygon(sg.PolygonSet):
         contours = []
         for contour in data["contours"]:
             if verbose:
-                print ("Reading a contour")
+                # print ("Reading a contour")
+                pass
             contour_points = []
 
             for point in contour:
@@ -149,27 +150,31 @@ class GeneralPolygon(sg.PolygonSet):
         self.arrangement = sg.arrangement.Arrangement()
 
         if verbose:
-            print(f"----------------------------------\n\tBuilding Arrangement\n----------------------------------")
+            pass
+            # print(f"----------------------------------\n\tBuilding Arrangement\n----------------------------------")
         # Each poly is a PolygonWithHoles
         for i, poly in enumerate(self.polygons):
             boundary = poly.outer_boundary()
             if verbose:
-                print(f"PolygonWithHole at index ({i})\n\tOuter Boundary: {compact_to_string(boundary)}")
+                # print(f"PolygonWithHole at index ({i})\n\tOuter Boundary: {compact_to_string(boundary)}")
+                pass
             for e in boundary.edges:
                 self.arrangement.insert(e)
 
             for j, hole in enumerate(poly.holes):
                 if verbose:
-                    print(f"\tHole at index ({j}): {compact_to_string(hole)}")
+                    pass
+                    # print(f"\tHole at index ({j}): {compact_to_string(hole)}")
                 for e in hole.edges:
                     self.arrangement.insert(e)
 
         if verbose:
             # print face information from arrangement
             for f in self.arrangement.faces:
-                print("////////////////////////////////////")
-                print(face_details(f))
-            print("////////////////////////////////////")
+                # print("////////////////////////////////////")
+                pass
+                # print(face_details(f))
+            # print("////////////////////////////////////")
 
 
     @require_contours
