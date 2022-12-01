@@ -118,12 +118,15 @@ class VisPoly:
 
 
     def compute_shadow_vis(self, shadow_vis_edges):
-
+        total_polyset = PolygonSet()
         for vis in shadow_vis_edges:
             polyset = build_polygon_set_from_arrangement(vis)
+            total_polyset = total_polyset.union(polyset)
 
-            for poly in polyset.polygons:
-                draw(poly, facecolor = "lightgreen")
+            # for poly in polyset.polygons:
+            #     draw(poly, facecolor = "lightgreen")
+        for poly in total_polyset.polygons:
+            draw(poly, facecolor = "lightgreen")
 
 
     def compute_shadows(self, visible_arr):
