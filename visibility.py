@@ -21,7 +21,9 @@ class VisPoly:
         self.cid = line.figure.canvas.mpl_connect('button_press_event', self.click_handle)
         self.cid = line.figure.canvas.mpl_connect('key_press_event', self.key_handle)
         self.interval = interval
-        self.shadow_polyset = PolygonSet()
+        # self.shadow_polyset = PolygonSet()
+        # table to keep track of shadows and contamination
+        self.shadows = {}
         self(( line.get_xdata() , line.get_ydata()))
     
     
@@ -31,14 +33,15 @@ class VisPoly:
     # - set of shadows and contamination status
     # - set of safe zones and VIP contamination status
     # ---------------------------------
-    # def bfs(self, state):
-    #     print("Search bfs")
-    #     class Node:
-    #         def __init__(self, x, y, shadows, safe_zone):
-    #             self.coord = coord
-    #             self.shadows = shadows
-    #             self.safe_zones = safe_zones
-    #     startNode = Node()
+    def bfs(self, state):
+        print("Search bfs")
+        class Node:
+            def __init__(self, x, y, shadows, safe_zones):
+                self.x = x
+                self.y = y
+                self.shadows = shadows
+                self.safe_zones = safe_zones
+        startNode = Node(self.xs, self.ys, self.shadows, None)
 
     def key_handle(self, event):
         # print(event.key)
@@ -70,6 +73,7 @@ class VisPoly:
         vis_p, vis_shadow = self.compute_visib_pursue()
         self.compute_shadow_vis(vis_shadow)
         self.compute_shadows(vis_p)
+        # self.compute_safezones(vis_p, vis_shadow)
         self.line.figure.canvas.draw()
 
     def env_res(self):
@@ -106,10 +110,10 @@ class VisPoly:
         vs = RotationalSweepVisibility(self.arran)
         p = Point2(self.xs, self.ys)
         face_p = arr.find(p)
-        vs_p = vs.compute_visibility(p, face_p)
+        vis_p = vs.compute_visibility(p, face_p)
         unsafe_zones = np.array([])
 
-        for j in vs_p.halfedges:
+        for j in vis_p.halfedges:
             # if segment is occlusion ray
             if ( self.is_occlusion_ray(j,p) ): 
                 draw(j.curve(), color='red', visible_point = False)
@@ -117,7 +121,7 @@ class VisPoly:
                 unsafe_zones = np.append(unsafe_zones, unsafe)
             else:
                 draw(j.curve(), color='black', visible_point = False)
-        return vs_p, unsafe_zones
+        return vis_p, unsafe_zones
 
     # ---------------------------------
     # divide contaminated shadow edges into points
@@ -152,9 +156,21 @@ class VisPoly:
         # update shadow polyset
         # is difference between full polyset and visible region
         x_polyset = build_polygon_set_from_arrangement(visible_arr)
-        self.shadow_polyset = self.full_polyset.difference(x_polyset)
-        for pol in self.shadow_polyset.polygons:
+        shadow_polyset = self.full_polyset.difference(x_polyset)
+        for pol in shadow_polyset.polygons:
             draw(pol, facecolor="darkblue")
+            # add shadow to shadow dict with false
+            self.shadows[pol] = False 
+
+    # def compute_safezones(self, vis_p, vis_shadow):
+    #     # update shadow polyset
+    #     # is difference between full polyset and visible region
+    #     # x_polyset = build_polygon_set_from_arrangement(visible_arr)
+    #     safe_polyset = build_polygon_set_from_arrangement(vis_p).difference(build_polygon_set_from_arrangement(vis_shadow))
+    #     for pol in safe_polyset.polygons:
+    #         draw(pol, facecolor="green")
+    #         # add shadow to shadow dict with false
+    #         # self.shadows[pol] = False 
 
 
 if __name__ == '__main__':
