@@ -162,7 +162,7 @@ def env_setup():
 if __name__ == '__main__':
     fig, ax = plt.subplots()
 
-    gp = GeneralPolygon.load_from_json("Envs/tetris_env.json", verbose=True)
+    gp = GeneralPolygon.load_from_json("Envs/rooms.json", verbose=True)
     gp.build_arrangement(verbose=True)
 
     np_half = np.array([])
