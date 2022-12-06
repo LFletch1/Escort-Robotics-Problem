@@ -15,18 +15,14 @@ class VisPoly:
         self.gp = gp
         self.line = line
         self.halves = halve
-        self.xs = line.get_xdata()
-        self.ys = line.get_ydata()
         self.arran = gp.arrangement
         self.full_polyset = self.remove_holes()
         self.cid = line.figure.canvas.mpl_connect('button_press_event', self.click_handle)
         self.cid = line.figure.canvas.mpl_connect('key_press_event', self.key_handle)
-        # self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
         self.interval = interval
-        self.__call__((5,5))
+        self(( line.get_xdata() , line.get_ydata()))
 
     def key_handle(self, event):
-        # self.env_reset()
         # print(event.key)
         if event.key == 'up':
             self.__call__((self.xs, self.ys+self.interval))
@@ -179,7 +175,7 @@ if __name__ == '__main__':
     interval = 5
     starting_pos = (5,5)
 
-    line, = ax.plot(starting_pos)  # empty line
+    line, = ax.plot(starting_pos[0], starting_pos[1])  # empty line
     vis_poly = VisPoly(line, gp, np_half, interval)
 
     plt.show()
