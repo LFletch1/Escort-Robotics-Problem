@@ -21,10 +21,10 @@ class VisPoly:
         self.cid = line.figure.canvas.mpl_connect('button_press_event', self.click_handle)
         self.cid = line.figure.canvas.mpl_connect('key_press_event', self.key_handle)
         self.shadow_polyset = PolygonSet()
-        self.interval = interval
-        # self.shadow_polyset = PolygonSet()
-        # table to keep track of shadows and contamination
+        self.unsafe_polyset = PolygonSet()
         self.shadows = {}
+        self.safe_zones = {}
+        self.interval = interval
         self(( line.get_xdata() , line.get_ydata()))
     
     
@@ -34,7 +34,7 @@ class VisPoly:
     # - set of shadows and contamination status
     # - set of safe zones and VIP contamination status
     # ---------------------------------
-    def bfs(self, state):
+    def bfs(self):
         print("Search bfs")
         class Node:
             def __init__(self, x, y, shadows, safe_zones):
@@ -42,7 +42,41 @@ class VisPoly:
                 self.y = y
                 self.shadows = shadows
                 self.safe_zones = safe_zones
-        startNode = Node(self.xs, self.ys, self.shadows, None)
+        startNode = Node(self.xs, self.ys, self.shadows, self.safe_zones)
+
+        goal = (60, 20)
+
+        q = deque()
+
+        # q.append((startNode.x, startNode.y))
+        q.append(startNode)
+        visitedNodes = []
+
+        while q:
+            current = q.popleft()
+            visitedNodes.append( ( current.x, current.y ))
+
+            for zone in current.safe_zones:
+                print("Zone: ", zone)
+
+            neighbors = [
+                        (current.x-self.interval, current.y),
+                        (current.x+self.interval, current.y),
+                        (current.x, current.y-self.interval),
+                        (current.x, current.y+self.interval),
+                        ]
+                        
+            for n in neighbors:
+                if self.gp.contains(n[0], n[1]): 
+                    if not (n[0], n[1]) in visitedNodes:
+                        print("YEP", n)
+                        q.append(Node(n[0], n[1], current.shadows, current.safe_zones))
+        
+                
+
+
+            
+
 
     def key_handle(self, event):
         # print(event.key)
@@ -54,6 +88,8 @@ class VisPoly:
             self((self.xs+self.interval, self.ys))
         elif event.key == 'left':
             self((self.xs-self.interval, self.ys))
+        elif event.key == 'B':
+            self.bfs()
 
     def click_handle(self, event):
         # self.env_reset()
@@ -172,7 +208,7 @@ class VisPoly:
         for pol in safe_polyset.polygons:
             draw(pol, facecolor="lightgreen")
             # add shadow to shadow dict with false
-            # self.shadows[pol] = False 
+            self.safe_zones[pol] = False 
 
 
 if __name__ == '__main__':
@@ -190,7 +226,7 @@ if __name__ == '__main__':
         
     arr = gp.arrangement
 
-    interval = 2
+    interval = 20
     starting_pos = (5,5)
 
     line, = ax.plot(starting_pos[0], starting_pos[1])  # empty line
