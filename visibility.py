@@ -25,7 +25,8 @@ class VisPoly:
         self.shadows = {}
         self.safe_zones = {}
         self.interval = interval
-        self(( line.get_xdata() , line.get_ydata()))
+        self(( int(line.get_xdata() ) , int (line.get_ydata()) ))
+        # self(( 5 , 5 ))
     
     
 
@@ -36,22 +37,26 @@ class VisPoly:
     # - set of safe zones and VIP contamination status
     # ---------------------------------
     def bfs(self):
-        print("Search bfs")
+
         class Node:
-            def __init__(self, x, y, shadows, safe_zones):
-                self.x = x
-                self.y = y
+            def __init__(self, coords, shadows, safe_zones, parent):
+                self.coords = coords
                 self.shadows = shadows
                 self.safe_zones = safe_zones
+                self.parent = parent
 
-        def stateUpdate(self, Node):
-            ## take in node and new position, returns node
-            return Node
+        # def stateUpdate(self, Node):
+        #     ## take in node and new position, returns node
+        #     return Node
 
 
-        startNode = Node(self.xs, self.ys, self.shadows, self.safe_zones)
+        path = []
+        startNode = Node( (self.xs, self.ys), self.shadows, self.safe_zones, None)
+        print(startNode.coords)
 
-        goal = (60, 20)
+        # print (type(self.xs))
+        goal = (55,55)
+        print(goal)
 
         q = deque()
 
@@ -61,9 +66,19 @@ class VisPoly:
 
         while q:
             current = q.popleft()
-            visitedNodes.append( ( current.x, current.y ))
+            # print("Current: ", current.x, current.y)
 
-            print (current.safe_zones.keys() ) 
+            # print (current.safe_zones.keys() ) 
+
+            if current.coords == goal:
+                print("Found goal")
+
+                while current.parent:
+                    path.append( current.coords ) 
+                    current = current.parent
+                
+                print("path: ", path)
+                return
             # for zone in current.safe_zones:
                 # print("Zone: ", zone)
                 # if zone.contains(current.x, current.y): 
@@ -73,24 +88,35 @@ class VisPoly:
                 # print (zone.area() )
 
             neighbors = [
-                        (current.x-self.interval, current.y),
-                        (current.x+self.interval, current.y),
-                        (current.x, current.y-self.interval),
-                        (current.x, current.y+self.interval),
+                        (current.coords[0]-self.interval, current.coords[1]),
+                        (current.coords[0]+self.interval, current.coords[1]),
+                        (current.coords[0], current.coords[1]-self.interval),
+                        (current.coords[0], current.coords[1]+self.interval),
                         ]
                         
             for n in neighbors:
-                if self.gp.contains(n[0], n[1]): 
-                    if not (n[0], n[1]) in visitedNodes:
-                        print("YEP", n)
-                        q.append(Node(n[0], n[1], current.shadows, current.safe_zones))
+                if self.gp.contains(current.coords[0], current.coords[1]): 
+                    print("Checking in ", n , " in there->")
+                    if not n in visitedNodes:
+                        print("Appending", n)
+                        q.append(Node(n, current.shadows, current.safe_zones, current))
+                        visitedNodes.append( n )
+                    else:
+                        print("ALready in there")
+        print(visitedNodes)
+        print("Exited")
         
+
+
+
+
+
+
+
+
+
+
                 
-
-
-            
-
-
     def key_handle(self, event):
         # print(event.key)
         if event.key == 'up':
@@ -240,7 +266,7 @@ if __name__ == '__main__':
         
     arr = gp.arrangement
 
-    interval = 5
+    interval = 2
     starting_pos = (5,5)
 
     line, = ax.plot(starting_pos[0], starting_pos[1])  # empty line
