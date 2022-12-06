@@ -55,7 +55,7 @@ class VisPoly:
         print(startNode.coords)
 
         # print (type(self.xs))
-        goal = (55,55)
+        goal = (35,85)
         print(goal)
 
         q = deque()
@@ -78,6 +78,9 @@ class VisPoly:
                     current = current.parent
                 
                 print("path: ", path)
+                for i in path:
+                    plt.plot(i[0], i[1], '.')
+                self.line.figure.canvas.draw()
                 return
             # for zone in current.safe_zones:
                 # print("Zone: ", zone)
@@ -135,7 +138,7 @@ class VisPoly:
         self((event.xdata, event.ydata))
 
     def __call__(self, coords):
-        # print(coords[0], coords[1])
+        print(coords[0], coords[1])
         if not self.gp.contains(coords[0], coords[1]): 
             print("NOT IN BOUNDS")
             return
