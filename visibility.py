@@ -19,25 +19,44 @@ class VisPoly:
         self.ys = line.get_ydata()
         self.arran = gp.arrangement
         self.full_polyset = self.remove_holes()
-        self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
+        self.cid = line.figure.canvas.mpl_connect('button_press_event', self.click_handle)
+        self.cid = line.figure.canvas.mpl_connect('key_press_event', self.key_handle)
         # self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
+        self.interval = 5
         self.env_res()
 
-    def __call__(self, event):
+    def key_handle(self, event):
+        # self.env_reset()
+        # print(event.key)
+        if event.key == 'up':
+            self.__call__((self.xs, self.ys+self.interval))
+        if event.key == 'down':
+            self.__call__((self.xs, self.ys-self.interval))
+        elif event.key == 'right':
+            self.__call__((self.xs+self.interval, self.ys))
+        elif event.key == 'left':
+            self.__call__((self.xs-self.interval, self.ys))
+
+    def click_handle(self, event):
+        # self.env_reset()
+        self.__call__((event.xdata, event.ydata))
+
+    def __call__(self, coords):
+        print(coords[0], coords[1])
         # print('click', event)
         # check if click is inside of line axes
-        if event.inaxes!=self.line.axes or not self.gp.contains(event.xdata, event.ydata): 
+        if not self.gp.contains(coords[0], coords[1]): 
             print("NOT IN BOUNDS")
             return
         # update position of x,y point on screen
-        self.xs = event.xdata 
-        self.ys = event.ydata
+        self.xs = coords[0] 
+        self.ys = coords[1]
         self.line.set_data(self.xs, self.ys)
         # clear environment
         plt.cla()
         self.env_res()
         # plot point of escort
-        plt.plot(event.xdata, event.ydata, '.')
+        plt.plot(self.xs, self.ys, '.')
         # compute viz of escort
         vis_p, vis_shadow = self.compute_visib_pursue()
         self.compute_shadow_vis(vis_shadow)
