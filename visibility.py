@@ -161,26 +161,6 @@ class VisPoly:
         #    draw(j.curve(), color="green", visible_arr = False)
 
 
-def env_setup():
-    # Set up environment
-    M = 50
-    boundary = [
-        Segment2(Point2(-M, -M), Point2(-M, M)), Segment2(Point2(-M, M), Point2(M, M)),
-        Segment2(Point2(M, M), Point2(M, -M)), Segment2(Point2(M, -M), Point2(-M, -M))
-    ]
-    box = [
-        Segment2(Point2(30, -30), Point2(-30, 30)), #Segment2(Point2(-30, 30), Point2(30, 30)),
-        Segment2(Point2(30, 30), Point2(30, -30)), Segment2(Point2(30, -30), Point2(-30, -30))
-    ]
-    arr = arrangement.Arrangement()
-    for s in boundary:
-        arr.insert(s)
-    for s in box:
-        arr.insert(s)
-    for ha in arr.halfedges:
-        draw(ha.curve())
-    return arr 
-
 if __name__ == '__main__':
     fig, ax = plt.subplots()
 
@@ -191,18 +171,15 @@ if __name__ == '__main__':
 
     # Draw the arrangement
     for he in gp.arrangement.halfedges:
-        #np_half = np.append(np_half, (he.source().point().x(), he.source().point().y(), he.target().point().x(), he.target().point().y()))
         np_half = np.append(np_half, Segment2(he.source().point(), he.target().point()))
         draw(he.curve(), visible_point=False)
         
-    #np_half = np_half.reshape([-1, 4])
-    # arr = env_setup()
     arr = gp.arrangement
 
     interval = 5
+    starting_pos = (5,5)
 
-    line, = ax.plot(0, 0)  # empty line
+    line, = ax.plot(starting_pos)  # empty line
     vis_poly = VisPoly(line, gp, np_half, interval)
-
 
     plt.show()
