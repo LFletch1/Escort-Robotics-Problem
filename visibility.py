@@ -25,17 +25,17 @@ class VisPoly:
     def key_handle(self, event):
         # print(event.key)
         if event.key == 'up':
-            self.__call__((self.xs, self.ys+self.interval))
+            self((self.xs, self.ys+self.interval))
         if event.key == 'down':
-            self.__call__((self.xs, self.ys-self.interval))
+            self((self.xs, self.ys-self.interval))
         elif event.key == 'right':
-            self.__call__((self.xs+self.interval, self.ys))
+            self((self.xs+self.interval, self.ys))
         elif event.key == 'left':
-            self.__call__((self.xs-self.interval, self.ys))
+            self((self.xs-self.interval, self.ys))
 
     def click_handle(self, event):
         # self.env_reset()
-        self.__call__((event.xdata, event.ydata))
+        self((event.xdata, event.ydata))
 
     def __call__(self, coords):
         print(coords[0], coords[1])
@@ -47,22 +47,24 @@ class VisPoly:
         # update position of x,y point on screen
         self.xs = coords[0] 
         self.ys = coords[1]
-        self.line.set_data(self.xs, self.ys)
+        # self.line.set_data(self.xs, self.ys)
+
         # clear environment
-        plt.cla()
         self.env_res()
-        # plot point of escort
-        plt.plot(self.xs, self.ys, '.')
-        # compute viz of escort
+
+        # vis_p = visibility polygon of escort
+        # vis_shadow = visibility polygon of shadows (2nd level)
         vis_p, vis_shadow = self.compute_visib_pursue()
         self.compute_shadow_vis(vis_shadow)
         self.compute_shadows(vis_p)
         self.line.figure.canvas.draw()
 
     def env_res(self):
+        plt.cla()
         ax.set_title('click to build line segments')
         for ha in self.arran.halfedges:
             draw(ha.curve())
+        plt.plot(self.xs, self.ys, '.')
 
     def remove_holes(self):
         # this function is used to calculate full polyset without holes
@@ -85,6 +87,11 @@ class VisPoly:
             if isinstance(intersection(seg, edge), Segment2):
                 return False
         return True
+
+    def draw_poly(self, polygon):
+        plt.cla()
+        for poly in polygon.polygons:
+            draw(poly, facecolor = "lightgreen")
 
     def compute_unsafe_zone(self,j, visibility):
         # divide segment in to 10 points for now
@@ -116,7 +123,6 @@ class VisPoly:
         p = Point2(self.xs, self.ys)
         face_p = arr.find(p)
         vs_p = vs.compute_visibility(p, face_p)
-
 
         unsafe_zones = np.array([])
 
