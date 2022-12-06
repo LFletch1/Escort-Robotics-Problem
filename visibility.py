@@ -28,6 +28,7 @@ class VisPoly:
         self(( line.get_xdata() , line.get_ydata()))
     
     
+
     # ---------------------------------
     # state is represented by:
     # - where the escort is 
@@ -42,6 +43,12 @@ class VisPoly:
                 self.y = y
                 self.shadows = shadows
                 self.safe_zones = safe_zones
+
+        def stateUpdate(self, Node):
+            ## take in node and new position, returns node
+            return Node
+
+
         startNode = Node(self.xs, self.ys, self.shadows, self.safe_zones)
 
         goal = (60, 20)
@@ -56,8 +63,14 @@ class VisPoly:
             current = q.popleft()
             visitedNodes.append( ( current.x, current.y ))
 
-            for zone in current.safe_zones:
-                print("Zone: ", zone)
+            print (current.safe_zones.keys() ) 
+            # for zone in current.safe_zones:
+                # print("Zone: ", zone)
+                # if zone.contains(current.x, current.y): 
+                # if zone.oriented_side(sg.Point2(current.x, current.y)):
+                #     print("FOUND ANSWER")
+                #     return
+                # print (zone.area() )
 
             neighbors = [
                         (current.x-self.interval, current.y),
@@ -203,9 +216,10 @@ class VisPoly:
         # update shadow polyset
         # is difference between full polyset and visible region
         # x_polyset = build_polygon_set_from_arrangement(visible_arr)
-        safe_polyset = self.full_polyset.difference(self.shadow_polyset)
-        safe_polyset = safe_polyset.difference(self.unsafe_polyset)
-        for pol in safe_polyset.polygons:
+        self.safe_polyset = Polygon()
+        self.safe_polyset = self.full_polyset.difference(self.shadow_polyset)
+        self.safe_polyset = self.safe_polyset.difference(self.unsafe_polyset)
+        for pol in self.safe_polyset.polygons:
             draw(pol, facecolor="lightgreen")
             # add shadow to shadow dict with false
             self.safe_zones[pol] = False 
@@ -226,7 +240,7 @@ if __name__ == '__main__':
         
     arr = gp.arrangement
 
-    interval = 20
+    interval = 5
     starting_pos = (5,5)
 
     line, = ax.plot(starting_pos[0], starting_pos[1])  # empty line
