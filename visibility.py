@@ -20,6 +20,7 @@ class VisPoly:
         self.full_polyset = build_polygon_set_from_arrangement(gp.arrangement)
         self.cid = line.figure.canvas.mpl_connect('button_press_event', self.click_handle)
         self.cid = line.figure.canvas.mpl_connect('key_press_event', self.key_handle)
+        self.shadow_polyset = PolygonSet()
         self.interval = interval
         # self.shadow_polyset = PolygonSet()
         # table to keep track of shadows and contamination
@@ -73,7 +74,7 @@ class VisPoly:
         vis_p, vis_shadow = self.compute_visib_pursue()
         self.compute_shadow_vis(vis_shadow)
         self.compute_shadows(vis_p)
-        # self.compute_safezones(vis_p, vis_shadow)
+        self.compute_safezones(vis_p, vis_shadow)
         self.line.figure.canvas.draw()
 
     def env_res(self):
@@ -143,34 +144,35 @@ class VisPoly:
         return visibile_edges
 
     def compute_shadow_vis(self, shadow_vis_edges):
-        total_polyset = PolygonSet()
+        self.unsafe_polyset = PolygonSet()
         for vis in shadow_vis_edges:
             polyset = build_polygon_set_from_arrangement(vis)
-            total_polyset = total_polyset.union(polyset)
+            self.unsafe_polyset = self.unsafe_polyset.union(polyset)
         # these are the 'unsafe' regions that are in sight of 
         # contaminated shadows
-        for poly in total_polyset.polygons:
-            draw(poly, facecolor = "lightgreen")
+        for poly in self.unsafe_polyset.polygons:
+            draw(poly, facecolor = "orange")
 
     def compute_shadows(self, visible_arr):
         # update shadow polyset
         # is difference between full polyset and visible region
         x_polyset = build_polygon_set_from_arrangement(visible_arr)
-        shadow_polyset = self.full_polyset.difference(x_polyset)
-        for pol in shadow_polyset.polygons:
+        self.shadow_polyset = self.full_polyset.difference(x_polyset)
+        for pol in self.shadow_polyset.polygons:
             draw(pol, facecolor="darkblue")
             # add shadow to shadow dict with false
             self.shadows[pol] = False 
 
-    # def compute_safezones(self, vis_p, vis_shadow):
-    #     # update shadow polyset
-    #     # is difference between full polyset and visible region
-    #     # x_polyset = build_polygon_set_from_arrangement(visible_arr)
-    #     safe_polyset = build_polygon_set_from_arrangement(vis_p).difference(build_polygon_set_from_arrangement(vis_shadow))
-    #     for pol in safe_polyset.polygons:
-    #         draw(pol, facecolor="green")
-    #         # add shadow to shadow dict with false
-    #         # self.shadows[pol] = False 
+    def compute_safezones(self, vis_p, vis_shadow):
+        # update shadow polyset
+        # is difference between full polyset and visible region
+        # x_polyset = build_polygon_set_from_arrangement(visible_arr)
+        safe_polyset = self.full_polyset.difference(self.shadow_polyset)
+        safe_polyset = safe_polyset.difference(self.unsafe_polyset)
+        for pol in safe_polyset.polygons:
+            draw(pol, facecolor="lightgreen")
+            # add shadow to shadow dict with false
+            # self.shadows[pol] = False 
 
 
 if __name__ == '__main__':
