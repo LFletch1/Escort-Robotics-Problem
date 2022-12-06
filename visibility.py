@@ -19,8 +19,8 @@ class VisPoly:
         self.ys = line.get_ydata()
         self.arran = gp.arrangement
         self.full_polyset = self.remove_holes()
-        self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
-        # self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
+        #self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
+        self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
         self.env_res()
 
     def __call__(self, event):
@@ -112,8 +112,8 @@ class VisPoly:
                 unsafe = self.compute_unsafe_zone(j, vs)
 
                 unsafe_zones = np.append(unsafe_zones, unsafe)
-            else:
-                draw(j.curve(), color='black', visible_point = False)
+            #else:
+            #    draw(j.curve(), color='black', visible_point = False)
         return vs_p, unsafe_zones
 
 
