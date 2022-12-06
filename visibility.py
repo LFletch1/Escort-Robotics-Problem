@@ -11,7 +11,7 @@ import time
 # general_polygon.py
 
 class VisPoly:
-    def __init__(self, line, gp, halve):
+    def __init__(self, line, gp, halve, interval):
         self.gp = gp
         self.line = line
         self.halves = halve
@@ -22,8 +22,8 @@ class VisPoly:
         self.cid = line.figure.canvas.mpl_connect('button_press_event', self.click_handle)
         self.cid = line.figure.canvas.mpl_connect('key_press_event', self.key_handle)
         # self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
-        self.interval = 5
-        self.env_res()
+        self.interval = interval
+        self.__call__((5,5))
 
     def key_handle(self, event):
         # self.env_reset()
@@ -199,8 +199,10 @@ if __name__ == '__main__':
     # arr = env_setup()
     arr = gp.arrangement
 
+    interval = 5
+
     line, = ax.plot(0, 0)  # empty line
-    vis_poly = VisPoly(line, gp, np_half)
+    vis_poly = VisPoly(line, gp, np_half, interval)
 
 
     plt.show()
