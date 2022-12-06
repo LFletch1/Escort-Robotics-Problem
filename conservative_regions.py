@@ -184,6 +184,33 @@ def get_env_conservative_regions(env_segments, env_polygon):
                 conservative_edge = sg.Segment2(closest_point2, seg.point(0))
                 conservative_region_edges.append(conservative_edge)
 
+        # If segment contains one environment reflexive points (previous if statement would catch both case)
+        elif seg.point(0) in reflex_points or seg.point(1) in reflex_points:
+            if seg.point(0) in reflex_points:
+                r_point = seg.point(0)
+                non_r_point = seg.point(1)
+            else:
+                r_point = seg.point(1)
+                non_r_point = seg.point(0)
+            vec = r_point - non_r_point
+            ray = sg.Ray2(r_point, vec)
+            intersection_points = []
+            for line_seg in env_segments:
+                intersect = sg.intersection(ray, line_seg)
+                if isinstance(intersect, sg.Segment2):
+                    closest = closer_point(r_point, intersect.point(0), intersect.point(1))
+                    if not lines_share_endpoint(seg, line_seg):
+                        intersection_points.append(closest)
+                    
+                elif isinstance(intersect, sg.Point2):
+                    if not lines_share_endpoint(seg, line_seg):
+                        intersection_points.append(intersect)
+
+            if len(intersection_points):
+                closest_point1 = closest_point(r_point, intersection_points)
+                conservative_edge = sg.Segment2(closest_point1, r_point)
+                conservative_region_edges.append(conservative_edge) 
+            
     return conservative_region_edges
 
                     
@@ -192,17 +219,17 @@ def get_env_conservative_regions(env_segments, env_polygon):
 
 
 # rooms environment
-coords = [(2,0),(2,4),(5,4),(5,3),(3,3),(3,1),(9,1),(9,3),(7,3),(8,4),(11,4),(11,6),(7,6),(7,7),(9,7),(9,9),(3,9),(3,7),(5,7),(5,6),(0,6),(0,0)]
+# coords = [(2,0),(2,4),(5,4),(5,3),(3,3),(3,1),(9,1),(9,3),(7,3),(8,4),(11,4),(11,6),(7,6),(7,7),(9,7),(9,9),(3,9),(3,7),(5,7),(5,6),(0,6),(0,0)]
 
 # tetris environment
-# coords = [(0 , 4 ),
-#             (12, 4 ),
-#             (12, 0 ),
-#             (16, 0 ),
-#             (16, 8 ),
-#             (4 , 8 ),
-#             (4 , 12),
-#             (0 , 12)]
+coords = [(0 , 4 ),
+            (12, 4 ),
+            (12, 0 ),
+            (16, 0 ),
+            (16, 8 ),
+            (4 , 8 ),
+            (4 , 12),
+            (0 , 12)]
 
 
 env_poly = poly_from_coords(coords)
@@ -213,11 +240,13 @@ draw(env_poly)
 
 cons_edges = get_env_conservative_regions(env_segments, env_poly)
 
+
 for edge in cons_edges:
     draw(edge, color='blue')
 
 for point in reflex_angle_points:
     draw(point, color='red')
+
 
 # a = sg.Point2(3, 2)
 # b = sg.Point2(3, 3)
