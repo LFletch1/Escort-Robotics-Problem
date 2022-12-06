@@ -1,6 +1,7 @@
 import skgeom as sg
 from skgeom.draw import draw
 import matplotlib.pyplot as plt
+import math
 
 # Notes: To access a segment's two points use seg.point(0) and seg.point(1)
 
@@ -20,9 +21,7 @@ def get_segments_from_coords(coords):
     return segments
 
 def lines_share_endpoint(seg1, seg2):
-    if seg1.point(0) == seg2.point(0) or seg1.point(0) == seg2.point(1):
-        return True
-    elif seg1.point(1) == seg2.point(0) or seg1.point(1) == seg2.point(1):
+    if seg1.point(0) == seg2.point(0) or seg1.point(0) == seg2.point(1) or seg1.point(1) == seg2.point(0) or seg1.point(1) == seg2.point(1):
         return True
     else:
         return False
@@ -68,11 +67,7 @@ def reflex_angle_point(seg1, seg2, polygon_set):
     else:
         return None
 
-# def slope(seg):
-#     '''return slope of line segment'''
-#     slop
-
-def get_environment_reflex_angle(segments, env_polygon):
+def get_environment_reflex_points(segments, env_polygon):
     '''Segments must be given in an order where adjacent vertexes in the segmetns list are adjacent'''
  
     polygon_set = sg.PolygonSet([env_polygon])
@@ -88,7 +83,6 @@ def get_environment_reflex_angle(segments, env_polygon):
         reflex_angle_points.append(last_point) 
 
     return reflex_angle_points
-
 
 def get_environment_corner_lines(coords):
     poly = poly_from_coords(coords) 
@@ -120,24 +114,127 @@ def get_environment_corner_lines(coords):
                 if polygon_set.locate(mid_point):
                     env_rays.append(line)
     return env_rays
-    
 
-# coords = [(0,0),(0,6),(5,6),(5,7),(3,7),(3,9),(9,9),(9,7),(7,7),(7,6),\
-#             (11,6),(11,4),(7,4),(7,3),(9,3),(9,1),(3,1),(3,3),(5,3),(5,4),(2,4),(2,0)]
+def closer_point(target, point_a, point_b):
+    '''Return point that is closer to target'''
+    dist_a = math.sqrt((float(target.x()) - float(point_a.x()))**2 + (float(target.y()) - float(point_a.y()))**2)
+    dist_b = math.sqrt((float(target.x()) - float(point_b.x()))**2 + (float(target.y()) - float(point_b.y()))**2)
+    if dist_a < dist_b:
+        return point_a
+    else:
+        return point_b
 
-coords = [(2,0),(2,4),(5,4),(5,3),(3,3),(3,1),(9,1),(9,3),(7,3),(7,4),(11,4),(11,6),(7,6),(7,7),(9,7),(9,9),(3,9),(3,7),(5,7),(5,6),(0,6),(0,0)]
+def closest_point(target, list_of_points):
+    '''Return point that is closer to target'''
+    least_dist = 100000
+    close_point = list_of_points[0]
+    for point in list_of_points:
+        dist = math.sqrt((float(target.x()) - float(point.x()))**2 + (float(target.y()) - float(point.y()))**2)
+        if dist < least_dist:
+            close_point = point
+            least_dist = dist
+    return close_point
+
+
+def get_env_conservative_regions(env_segments, env_polygon):
+    '''Inefficient but working method to calculate conservative regions'''
+    reflex_points = get_environment_reflex_points(env_segments, env_polygon)
+
+    conservative_region_edges = []
+    for seg in env_segments:
+        # If segment contains two environment reflexive points
+        if seg.point(0) in reflex_points and seg.point(1) in reflex_points:
+            # draw(seg, color='orange')
+            vec1 = seg.point(1) - seg.point(0) # Vector in direction from point 1 to point 2
+            vec2 = seg.point(0) - seg.point(1) # Vector Ray in direction of from point 2 to point 1
+            ray1 = sg.Ray2(seg.point(0), vec1) # Ray starting at point 2
+            ray2 = sg.Ray2(seg.point(1), vec2) # Ray starting at point 1
+            intersecting1_points = []
+            intersecting2_points = []
+            for line_seg in env_segments:
+
+                intersect1 = sg.intersection(ray1, line_seg)
+                intersect2 = sg.intersection(ray2, line_seg)
+
+                if isinstance(intersect1, sg.Segment2):
+                    closest = closer_point(seg.point(1), intersect1.point(0), intersect1.point(1))
+                    if not lines_share_endpoint(seg, line_seg):
+                        intersecting1_points.append(closest)
+                    
+                elif isinstance(intersect1, sg.Point2):
+                    if not lines_share_endpoint(seg, line_seg):
+                        intersecting1_points.append(intersect1)
+
+                if isinstance(intersect2, sg.Segment2):
+                    closest = closer_point(seg.point(0), intersect2.point(0), intersect2.point(1))
+                    if not lines_share_endpoint(seg, line_seg):
+                        intersecting2_points.append(closest)
+                    
+                elif isinstance(intersect2, sg.Point2):
+                    if not lines_share_endpoint(seg, line_seg):
+                        intersecting2_points.append(intersect2)
+
+            if len(intersecting1_points):
+                closest_point1 = closest_point(seg.point(1), intersecting1_points)
+                conservative_edge = sg.Segment2(closest_point1, seg.point(1))
+                conservative_region_edges.append(conservative_edge)
+
+            if len(intersecting2_points):
+                closest_point2 = closest_point(seg.point(0), intersecting2_points)
+                conservative_edge = sg.Segment2(closest_point2, seg.point(0))
+                conservative_region_edges.append(conservative_edge)
+
+    return conservative_region_edges
+
+                    
+                
 
 
 
-test_poly = poly_from_coords(coords)
-segments = get_segments_from_coords(coords)
-# rays = get_environment_corner_lines(coords)
-reflex_angle_points = get_environment_reflex_angle(segments, test_poly)
+# rooms environment
+coords = [(2,0),(2,4),(5,4),(5,3),(3,3),(3,1),(9,1),(9,3),(7,3),(8,4),(11,4),(11,6),(7,6),(7,7),(9,7),(9,9),(3,9),(3,7),(5,7),(5,6),(0,6),(0,0)]
+
+# tetris environment
+# coords = [(0 , 4 ),
+#             (12, 4 ),
+#             (12, 0 ),
+#             (16, 0 ),
+#             (16, 8 ),
+#             (4 , 8 ),
+#             (4 , 12),
+#             (0 , 12)]
 
 
-draw(test_poly)
+env_poly = poly_from_coords(coords)
+env_segments = get_segments_from_coords(coords)
+reflex_angle_points = get_environment_reflex_points(env_segments, env_poly)
+
+draw(env_poly)
+
+cons_edges = get_env_conservative_regions(env_segments, env_poly)
+
+for edge in cons_edges:
+    draw(edge, color='blue')
 
 for point in reflex_angle_points:
     draw(point, color='red')
+
+# a = sg.Point2(3, 2)
+# b = sg.Point2(3, 3)
+
+# # seg = sg.Segment2(sg.Point2(1,4),sg.Point2(8,4))
+# seg = sg.Segment2(sg.Point2(3,5),sg.Point2(3,6))
+
+# plt.clf()
+# v = b - a 
+# r = sg.Ray2(a,v)
+# print(r.direction())
+# print(r.is_horizontal())
+# print(r.is_vertical())
+# # print(r)
+# intersect = sg.intersection(r, seg)
+# print(type(intersect))
+# draw(intersect)
+# draw(seg)
     
 plt.show()
