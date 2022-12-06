@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 from general_polygon import GeneralPolygon
 from scikit_utils import *
 import time
+from collections import deque
 
 # Documentation and Demos used in this code:
 # https://matplotlib.org/stable/gallery/event_handling/coords_demo.html
@@ -22,12 +23,28 @@ class VisPoly:
         self.interval = interval
         self.shadow_polyset = PolygonSet()
         self(( line.get_xdata() , line.get_ydata()))
+    
+    
+    # ---------------------------------
+    # state is represented by:
+    # - where the escort is 
+    # - set of shadows and contamination status
+    # - set of safe zones and VIP contamination status
+    # ---------------------------------
+    # def bfs(self, state):
+    #     print("Search bfs")
+    #     class Node:
+    #         def __init__(self, x, y, shadows, safe_zone):
+    #             self.coord = coord
+    #             self.shadows = shadows
+    #             self.safe_zones = safe_zones
+    #     startNode = Node()
 
     def key_handle(self, event):
         # print(event.key)
         if event.key == 'up':
             self((self.xs, self.ys+self.interval))
-        if event.key == 'down':
+        elif event.key == 'down':
             self((self.xs, self.ys-self.interval))
         elif event.key == 'right':
             self((self.xs+self.interval, self.ys))
@@ -39,20 +56,15 @@ class VisPoly:
         self((event.xdata, event.ydata))
 
     def __call__(self, coords):
-        print(coords[0], coords[1])
-        # print('click', event)
-        # check if click is inside of line axes
+        # print(coords[0], coords[1])
         if not self.gp.contains(coords[0], coords[1]): 
             print("NOT IN BOUNDS")
             return
         # update position of x,y point on screen
         self.xs = coords[0] 
         self.ys = coords[1]
-        # self.line.set_data(self.xs, self.ys)
-
         # clear environment
         self.env_res()
-
         # vis_p = visibility polygon of escort
         # vis_shadow = visibility polygon of shadows (2nd level)
         vis_p, vis_shadow = self.compute_visib_pursue()
@@ -160,7 +172,7 @@ if __name__ == '__main__':
         
     arr = gp.arrangement
 
-    interval = 5
+    interval = 2
     starting_pos = (5,5)
 
     line, = ax.plot(starting_pos[0], starting_pos[1])  # empty line
