@@ -16,10 +16,11 @@ class VisPoly:
         self.line = line
         self.halves = halve
         self.arran = gp.arrangement
-        self.full_polyset = self.remove_holes()
+        self.full_polyset = build_polygon_set_from_arrangement(gp.arrangement)
         self.cid = line.figure.canvas.mpl_connect('button_press_event', self.click_handle)
         self.cid = line.figure.canvas.mpl_connect('key_press_event', self.key_handle)
         self.interval = interval
+        self.shadow_polyset = PolygonSet()
         self(( line.get_xdata() , line.get_ydata()))
 
     def key_handle(self, event):
@@ -65,19 +66,6 @@ class VisPoly:
         for ha in self.arran.halfedges:
             draw(ha.curve())
         plt.plot(self.xs, self.ys, '.')
-
-    def remove_holes(self):
-        # this function is used to calculate full polyset without holes
-        # for use in shadow drawing function
-
-        holeArrangement = arrangement.Arrangement()
-        for i, poly in enumerate(self.gp.polygons):
-            for j, hole in enumerate(poly.holes):
-                for e in hole.edges:
-                    holeArrangement.insert(e)
-        y_polyset = build_polygon_set_from_arrangement(self.arran)
-        hole_polyset = build_polygon_set_from_arrangement(holeArrangement)
-        return y_polyset.difference(hole_polyset)
 
     def compute_occlusion(self,j,p):
         # Creates segment and sees if it overlaps
@@ -155,9 +143,9 @@ class VisPoly:
         #print("computing shadows")
         x_polyset = build_polygon_set_from_arrangement(visible_arr)
 
-        local = self.full_polyset.difference(x_polyset)
-        for pol in local.polygons:
-            draw(pol, facecolor="lightblue")
+        self.shadow_polyset = self.full_polyset.difference(x_polyset)
+        for pol in self.shadow_polyset.polygons:
+            draw(pol, facecolor="darkblue")
         #gps = [GeneralPolygon([x]) for x in local.polygons]
         # for j in shadows.halfedges:
         #    draw(j.curve(), color="green", visible_arr = False)
