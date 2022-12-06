@@ -67,7 +67,17 @@ class VisPoly:
             draw(ha.curve())
         plt.plot(self.xs, self.ys, '.')
 
-    def compute_occlusion(self,j,p):
+
+    def draw_poly(self, polygon):
+        plt.cla()
+        for poly in polygon.polygons:
+            draw(poly, facecolor = "lightgreen")
+        
+    # ---------------------------------
+    # compute the visibility of the pursuer
+    # returns visibility region of pursuer AND shadows
+    # ---------------------------------
+    def is_occlusion_ray(self,j,p):
         # Creates segment and sees if it overlaps
         seg = Segment2(j.source().point(), j.target().point())
 
@@ -76,79 +86,63 @@ class VisPoly:
                 return False
         return True
 
-    def draw_poly(self, polygon):
-        plt.cla()
-        for poly in polygon.polygons:
-            draw(poly, facecolor = "lightgreen")
+    # ---------------------------------
+    # compute the visibility of the pursuer
+    # returns visibility region of pursuer AND shadows
+    # ---------------------------------
+    def compute_visib_pursue(self):
+        vs = RotationalSweepVisibility(self.arran)
+        p = Point2(self.xs, self.ys)
+        face_p = arr.find(p)
+        vs_p = vs.compute_visibility(p, face_p)
+        unsafe_zones = np.array([])
 
+        for j in vs_p.halfedges:
+            # if segment is occlusion ray
+            if ( self.is_occlusion_ray(j,p) ): 
+                draw(j.curve(), color='red', visible_point = False)
+                unsafe = self.compute_unsafe_zone(j, vs)
+                unsafe_zones = np.append(unsafe_zones, unsafe)
+            else:
+                draw(j.curve(), color='black', visible_point = False)
+        return vs_p, unsafe_zones
+
+    # ---------------------------------
+    # divide contaminated shadow edges into points
+    # calculate unsafe zones from those points
+    # ---------------------------------
     def compute_unsafe_zone(self,j, visibility):
         # divide segment in to 10 points for now
         pt1 = np.array( (j.curve()[0].x(), j.curve()[0].y()) )
         pt2 = np.array( (j.curve()[1].x(), j.curve()[1].y()) )
         # replace 10 with number proportional to length of segment using np.linalg.norm
         points = np.linspace( pt1, pt2 , 10)[1:-1]
-
-        #print("POINTS:", points)
-
         visibile_edges = np.array([])
-
         for point in points:
-
             current_point = Point2(point[0], point[1])
             current_face = arr.find(current_point)
             vs_current = visibility.compute_visibility(current_point, current_face)
-
             visibile_edges = np.append(visibile_edges, vs_current)
 
-        # for p in points:
-        #     draw(p, color='blue', visible_point = True)
-
         return visibile_edges
-        
-
-    def compute_visib_pursue(self):
-        vs = RotationalSweepVisibility(self.arran)
-        p = Point2(self.xs, self.ys)
-        face_p = arr.find(p)
-        vs_p = vs.compute_visibility(p, face_p)
-
-        unsafe_zones = np.array([])
-
-        for j in vs_p.halfedges:
-            # if segment is occlusion ray
-            if ( self.compute_occlusion(j,p) ): 
-                draw(j.curve(), color='red', visible_point = False)
-                unsafe = self.compute_unsafe_zone(j, vs)
-
-                unsafe_zones = np.append(unsafe_zones, unsafe)
-            else:
-                draw(j.curve(), color='black', visible_point = False)
-        return vs_p, unsafe_zones
-
 
     def compute_shadow_vis(self, shadow_vis_edges):
         total_polyset = PolygonSet()
         for vis in shadow_vis_edges:
             polyset = build_polygon_set_from_arrangement(vis)
             total_polyset = total_polyset.union(polyset)
-
-            # for poly in polyset.polygons:
-            #     draw(poly, facecolor = "lightgreen")
+        # these are the 'unsafe' regions that are in sight of 
+        # contaminated shadows
         for poly in total_polyset.polygons:
             draw(poly, facecolor = "lightgreen")
 
-
     def compute_shadows(self, visible_arr):
-        # shadows = self.arran.difference(visible_arr)
-        #print("computing shadows")
+        # update shadow polyset
+        # is difference between full polyset and visible region
         x_polyset = build_polygon_set_from_arrangement(visible_arr)
-
         self.shadow_polyset = self.full_polyset.difference(x_polyset)
         for pol in self.shadow_polyset.polygons:
             draw(pol, facecolor="darkblue")
-        #gps = [GeneralPolygon([x]) for x in local.polygons]
-        # for j in shadows.halfedges:
-        #    draw(j.curve(), color="green", visible_arr = False)
 
 
 if __name__ == '__main__':
