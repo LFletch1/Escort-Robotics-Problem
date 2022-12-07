@@ -22,11 +22,12 @@ class VisPoly:
         self.cid = line.figure.canvas.mpl_connect('key_press_event', self.key_handle)
         self.shadow_polyset = PolygonSet()
         self.unsafe_polyset = PolygonSet()
+        self.safe_polyset = PolygonSet()
         self.shadows = {}
         self.safe_zones = {}
         self.interval = interval
+        self.graphics = True
         self(( int(line.get_xdata() ) , int (line.get_ydata()) ))
-        # self(( 5 , 5 ))
     
     
 
@@ -49,20 +50,18 @@ class VisPoly:
         #     ## take in node and new position, returns node
         #     return Node
 
-
         path = []
+        self.graphics = False
         startNode = Node( (self.xs, self.ys), self.shadows, self.safe_zones, None)
         print(startNode.coords)
 
-        # print (type(self.xs))
-        goal = (35,85)
-        print(goal)
 
         q = deque()
 
         # q.append((startNode.x, startNode.y))
         q.append(startNode)
         visitedNodes = []
+        goal = (10,30)
 
         while q:
             current = q.popleft()
@@ -70,25 +69,29 @@ class VisPoly:
 
             # print (current.safe_zones.keys() ) 
 
-            if current.coords == goal:
-                print("Found goal")
+            # if current.coords == goal:
+            #     print("Found goal")
 
-                while current.parent:
-                    path.append( current.coords ) 
-                    current = current.parent
+            #     while current.parent:
+            #         path.append( current.coords ) 
+            #         current = current.parent
                 
-                print("path: ", path)
-                for i in path:
-                    plt.plot(i[0], i[1], '.')
-                self.line.figure.canvas.draw()
-                return
+            #     print("path: ", path)
+            #     for i in path:
+            #         plt.plot(i[0], i[1], '.')
+            #     self.line.figure.canvas.draw()
+            #     return
             # for zone in current.safe_zones:
-                # print("Zone: ", zone)
-                # if zone.contains(current.x, current.y): 
-                # if zone.oriented_side(sg.Point2(current.x, current.y)):
-                #     print("FOUND ANSWER")
-                #     return
-                # print (zone.area() )
+            #     # print("Zone: ", zone)
+            #     # if zone.contains(current.x, current.y): 
+            #     poly_set = sg.PolygonSet([zone])
+            #     print("Created", poly_set)
+            #     # if poly_set.oriented_side(sg.Point2(goal[0], goal[1])):
+            #     if poly_set.locate(sg.Point2(goal[0], goal[1])):
+            #         print("FOUND ANSWER")
+            #         self.draw_poly(poly_set)
+            #         print("Polyset ", poly_set, "contains", goal)
+            #         return
 
             neighbors = [
                         (current.coords[0]-self.interval, current.coords[1]),
@@ -102,6 +105,7 @@ class VisPoly:
                     print("Checking in ", n , " in there->")
                     if not n in visitedNodes:
                         print("Appending", n)
+                        self(n)
                         q.append(Node(n, current.shadows, current.safe_zones, current))
                         visitedNodes.append( n )
                     else:
@@ -109,16 +113,6 @@ class VisPoly:
         print(visitedNodes)
         print("Exited")
         
-
-
-
-
-
-
-
-
-
-
                 
     def key_handle(self, event):
         # print(event.key)
@@ -146,14 +140,18 @@ class VisPoly:
         self.xs = coords[0] 
         self.ys = coords[1]
         # clear environment
-        self.env_res()
+        if self.graphics:
+            self.env_res()
         # vis_p = visibility polygon of escort
         # vis_shadow = visibility polygon of shadows (2nd level)
         vis_p, vis_shadow = self.compute_visib_pursue()
         self.compute_shadow_vis(vis_shadow)
         self.compute_shadows(vis_p)
         self.compute_safezones(vis_p, vis_shadow)
-        self.line.figure.canvas.draw()
+        if self.graphics:
+            self.line.figure.canvas.draw()
+        print ( "There are" , len(self.shadows), "shadows.")
+        print ( "There are" , len(self.safe_zones), "safezones.")
 
     def env_res(self):
         plt.cla()
@@ -166,7 +164,7 @@ class VisPoly:
     def draw_poly(self, polygon):
         plt.cla()
         for poly in polygon.polygons:
-            draw(poly, facecolor = "lightgreen")
+            draw(poly, facecolor = "yellow")
         
     # ---------------------------------
     # compute the visibility of the pursuer
@@ -236,6 +234,8 @@ class VisPoly:
         # is difference between full polyset and visible region
         x_polyset = build_polygon_set_from_arrangement(visible_arr)
         self.shadow_polyset = self.full_polyset.difference(x_polyset)
+
+        self.shadows.clear()
         for pol in self.shadow_polyset.polygons:
             draw(pol, facecolor="darkblue")
             # add shadow to shadow dict with false
@@ -248,6 +248,7 @@ class VisPoly:
         self.safe_polyset = Polygon()
         self.safe_polyset = self.full_polyset.difference(self.shadow_polyset)
         self.safe_polyset = self.safe_polyset.difference(self.unsafe_polyset)
+        self.safe_zones.clear()
         for pol in self.safe_polyset.polygons:
             draw(pol, facecolor="lightgreen")
             # add shadow to shadow dict with false
@@ -269,7 +270,7 @@ if __name__ == '__main__':
         
     arr = gp.arrangement
 
-    interval = 2
+    interval = 5
     starting_pos = (5,5)
 
     line, = ax.plot(starting_pos[0], starting_pos[1])  # empty line
