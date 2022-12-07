@@ -78,7 +78,7 @@ def get_environment_reflex_points(segments, env_polygon):
             reflex_angle_points.append(point)
 
     # Check first segment last segment in segments list
-    last_point = reflex_angle_point(segments[0], segments[1], polygon_set)
+    last_point = reflex_angle_point(segments[0], segments[-1], polygon_set)
     if last_point:
         reflex_angle_points.append(last_point) 
 
@@ -115,6 +115,12 @@ def get_environment_corner_lines(coords):
                     env_rays.append(line)
     return env_rays
 
+def midpoint(segment):
+    mid_x = (segment.point(0).x() + segment.point(1).x()) / 2
+    mid_y = (segment.point(0).y() + segment.point(1).y()) / 2
+    return sg.Point2(mid_x, mid_y)
+    
+
 def closer_point(target, point_a, point_b):
     '''Return point that is closer to target'''
     dist_a = math.sqrt((float(target.x()) - float(point_a.x()))**2 + (float(target.y()) - float(point_a.y()))**2)
@@ -135,10 +141,18 @@ def closest_point(target, list_of_points):
             least_dist = dist
     return close_point
 
+def seg_in_segment_set(segment, segment_set):
+    for seg in segment_set:
+        if segment.point(0) == seg.point(0) and segment.point(1) == seg.point(1):
+            return True
+        elif segment.point(0) == seg.point(1) and segment.point(1) == seg.point(0):
+            return True
+    return False
 
-def get_env_conservative_regions(env_segments, env_polygon):
-    '''Inefficient but working method to calculate conservative regions'''
+def get_env_conservative_edges(env_segments, env_polygon):
+    '''Inefficient but working method to calculate conservative edges'''
     reflex_points = get_environment_reflex_points(env_segments, env_polygon)
+    env_polygon_set = sg.PolygonSet([env_polygon])
 
     conservative_region_edges = []
     for seg in env_segments:
@@ -209,8 +223,69 @@ def get_env_conservative_regions(env_segments, env_polygon):
             if len(intersection_points):
                 closest_point1 = closest_point(r_point, intersection_points)
                 conservative_edge = sg.Segment2(closest_point1, r_point)
-                conservative_region_edges.append(conservative_edge) 
-            
+                conservative_region_edges.append(conservative_edge)
+
+    # Draw outward rays from reflex points that have are in the line of sight of each other
+    lines_of_sight_reflex_points = []
+    for j in range(len(reflex_points)):
+        for k in range(j+1, len(reflex_points)):
+            reflex1 = reflex_points[j]
+            reflex2 = reflex_points[k]
+            reflex_line = sg.Segment2(reflex1, reflex2)
+            no_intersections = True
+            for seg in env_segments:
+                intersect = sg.intersection(reflex_line, seg)
+                if isinstance(intersect, sg.Segment2):
+                    no_intersections = False
+                    break
+                    
+                m_p = midpoint(reflex_line)
+                if isinstance(intersect, sg.Point2):
+                    if intersect != seg.point(0) and intersect != seg.point(1):
+                        no_intersections = False
+                        break
+                    elif not env_polygon_set.locate(m_p):
+                        no_intersections = False
+                        break
+
+            if no_intersections:
+                lines_of_sight_reflex_points.append(reflex_line)
+
+    for seg in lines_of_sight_reflex_points:
+        vec1 = seg.point(0) - seg.point(1) # Vector in direction from point 1 to point 2
+        vec2 = seg.point(1) - seg.point(0) # Vector Ray in direction of from point 2 to point 1
+        ray1 = sg.Ray2(seg.point(0), vec1) # Ray starting at point 1
+        ray2 = sg.Ray2(seg.point(1), vec2) # Ray starting at point 2
+        intersecting1_points = []
+        intersecting2_points = []
+        for line_seg in env_segments:
+            intersect1 = sg.intersection(ray1, line_seg)
+            intersect2 = sg.intersection(ray2, line_seg)
+
+            if isinstance(intersect1, sg.Point2):
+                if intersect1 != seg.point(0):
+                    intersecting1_points.append(intersect1)
+
+            if isinstance(intersect2, sg.Point2):
+                if intersect2 != seg.point(1):
+                    intersecting2_points.append(intersect2)
+
+        if len(intersecting1_points):
+            closest_point1 = closest_point(seg.point(0), intersecting1_points)
+            conservative_edge = sg.Segment2(closest_point1, seg.point(0))
+            if not seg_in_segment_set(conservative_edge, env_segments):
+                m_p = midpoint(conservative_edge)
+                if env_polygon_set.locate(m_p):
+                    conservative_region_edges.append(conservative_edge)
+
+        if len(intersecting2_points):
+            closest_point2 = closest_point(seg.point(1), intersecting2_points)
+            conservative_edge = sg.Segment2(closest_point2, seg.point(1))
+            if not seg_in_segment_set(conservative_edge, env_segments):
+                m_p = midpoint(conservative_edge)
+                if env_polygon_set.locate(m_p):
+                    conservative_region_edges.append(conservative_edge)
+
     return conservative_region_edges
 
                     
@@ -219,18 +294,19 @@ def get_env_conservative_regions(env_segments, env_polygon):
 
 
 # rooms environment
-# coords = [(2,0),(2,4),(5,4),(5,3),(3,3),(3,1),(9,1),(9,3),(7,3),(8,4),(11,4),(11,6),(7,6),(7,7),(9,7),(9,9),(3,9),(3,7),(5,7),(5,6),(0,6),(0,0)]
+coords = [(2,0),(2,4),(5,4),(5,3),(3,3),(3,1),(9,1),(9,3),(7,3),(8,4),(11,4),(11,6),(7,6),(7,7),(9,7),(9,9),(3,9),(3,7),(5,7),(5,6),(0,6),(0,0)]
 
 # tetris environment
-coords = [(0 , 4 ),
-            (12, 4 ),
-            (12, 0 ),
-            (16, 0 ),
-            (16, 8 ),
-            (4 , 8 ),
-            (4 , 12),
-            (0 , 12)]
-
+# coords = [  
+#             (0 , 12),
+#             (0 , 4 ),
+#             (12, 4 ),
+#             (12, 0 ),
+#             (16, 0 ),
+#             (16, 8 ),
+#             (4 , 8 ),
+#             (4 , 12)
+#             ]
 
 env_poly = poly_from_coords(coords)
 env_segments = get_segments_from_coords(coords)
@@ -238,7 +314,7 @@ reflex_angle_points = get_environment_reflex_points(env_segments, env_poly)
 
 draw(env_poly)
 
-cons_edges = get_env_conservative_regions(env_segments, env_poly)
+cons_edges = get_env_conservative_edges(env_segments, env_poly)
 
 
 for edge in cons_edges:
@@ -251,7 +327,9 @@ for point in reflex_angle_points:
 # a = sg.Point2(3, 2)
 # b = sg.Point2(3, 3)
 
-# # seg = sg.Segment2(sg.Point2(1,4),sg.Point2(8,4))
+# seg = sg.Segment2(sg.Point2(1,4),sg.Point2(8,4))
+poly_set = sg.PolygonSet([env_poly])
+
 # seg = sg.Segment2(sg.Point2(3,5),sg.Point2(3,6))
 
 # plt.clf()
