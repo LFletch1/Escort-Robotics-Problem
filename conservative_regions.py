@@ -2,6 +2,7 @@ import skgeom as sg
 from skgeom.draw import draw
 import matplotlib.pyplot as plt
 import math
+from scikit_utils import *
 
 # Notes: To access a segment's two points use seg.point(0) and seg.point(1)
 
@@ -318,71 +319,67 @@ def get_env_conservative_edges(env_segments, env_polygon):
 
     return conservative_region_edges
 
-                    
-                
+
+def polys_share_edge(poly1, poly2):
+    for edge1 in poly1.edges:
+        for edge2 in poly2.edges:
+            if equal_segments(edge1, edge2):
+                # cent1 = sg.centroid(poly1)
+                # cent2 = sg.centroid(poly2)
+                # draw(sg.Segment2(cent1, cent2), color="red")
+                # draw(cent1, color="red")
+                # draw(cent2, color="red")
+                return True
+    return False
 
 
+def get_adj_list_of_conservative_centroid_nodes(coords):
+    env_poly = poly_from_coords(coords)
+    env_segments = get_segments_from_coords(coords)
+    cons_edges = get_env_conservative_edges(env_segments, env_poly)
+    arr = sg.arrangement.Arrangement()
+    for seg in env_segments:
+        arr.insert(seg)
+    for edge in cons_edges:
+        # draw(edge, color="blue")
+        arr.insert(edge)
 
-# rooms environment
-coords = [(2,0),(2,4),(5,4),(5,3),(3,3),(3,1),(9,1),(9,3),(7,3),(8,4),(11,4),(11,6),(7,6),(7,7),(9,7),(9,9),(3,9),(3,7),(5,7),(5,6),(0,6),(0,0)]
+    poly_list = build_list_of_polygons_from_arrangement(arr)
 
-# tetris environment
-# coords = [(0,12),(0,4),(12,4),(12,0),(16,0),(16,8),(4,8),(4,12)]
-
-
-# coords =[(0,5),(0,1),(2,1),(2,0),(5,0),(7,2),(7,4),(9,2),(9,4),(10,3),(10,6),(6,7),(6,6),(5,6),(5,7),(4,7),(4,4),(5,4),(5,5),(6,5),(6,3),(3,3),
-#             (3,7),(2,7),(2,8),(3,8),(3,9),(0,9),(0,8),(1,8),(1,7)]
-
-# coords = [(0,0),(1,0),(1,1),(2,1),(2,0),(12,0),(12,5),(10,5),(10,2),(7,2),(7,3),(9,3),(9,6),(8,6),(8,4),(7,4),(7,6),(5,6),(5,2),(4,3),(4,7),(2,7),(2,2),(1,2),(1,3),(0,3)]
-
-
-env_poly = poly_from_coords(coords)
-env_segments = get_segments_from_coords(coords)
-reflex_angle_points = get_environment_reflex_points(env_segments, env_poly)
-
-draw(env_poly)
-
-cons_edges = get_env_conservative_edges(env_segments, env_poly)
-# print(len(cons_edges))
-
-# for seg in env_segments:
-#     draw(seg)
-
-for edge in cons_edges:
-    # print(edge)
-    draw(edge, color='blue')
-
-for point in reflex_angle_points:
-    draw(point, color='red')
+    adjacency_list = {} 
+    for poly in poly_list:
+        centroid = sg.centroid(poly)
+        adjacency_list[(float(centroid.x()), float(centroid.y()))] = []
+    for i in range(len(poly_list)):
+        for j in range(i+1, len(poly_list)):
+            if polys_share_edge(poly_list[i], poly_list[j]):
+                cent1 = sg.centroid(poly_list[i])
+                cent2 = sg.centroid(poly_list[j])
+                adjacency_list[(float(cent1.x()),float(cent1.y()))].append((float(cent2.x()),float(cent2.y()))) 
+                adjacency_list[(float(cent2.x()),float(cent2.y()))].append((float(cent1.x()),float(cent1.y()))) 
+    return adjacency_list
 
 
-# a = sg.Point2(3, 2)
-# b = sg.Point2(4, 3)
+def main():   
+    # rooms environment
+    # coords = [(2,0),(2,4),(5,4),(5,3),(3,3),(3,1),(9,1),(9,3),(7,3),(8,4),(11,4),(11,6),(7,6),(7,7),(9,7),(9,9),(3,9),(3,7),(5,7),(5,6),(0,6),(0,0)]
 
-# seg1 = sg.Segment2(a,b)
-# seg2 = sg.Segment2(b,a)
+    # tetris environment
+    coords = [(0,12),(0,4),(12,4),(12,0),(16,0),(16,8),(4,8),(4,12)]
 
-# print(seg1)
-# print(seg2)
-# print(seg1 == seg2)
-# print(equal_segments(seg1,seg2))
-# print(equal_segments(seg1,seg1))
+    # coords =[(0,5),(0,1),(2,1),(2,0),(5,0),(7,2),(7,4),(9,2),(9,4),(10,3),(10,6),(6,7),(6,6),(5,6),(5,7),(4,7),(4,4),(5,4),(5,5),(6,5),(6,3),(3,3),
+    #             (3,7),(2,7),(2,8),(3,8),(3,9),(0,9),(0,8),(1,8),(1,7)]
 
-# seg = sg.Segment2(sg.Point2(1,4),sg.Point2(8,4))
-poly_set = sg.PolygonSet([env_poly])
+    # coords = [(0,0),(1,0),(1,1),(2,1),(2,0),(12,0),(12,5),(10,5),(10,2),(7,2),(7,3),(9,3),(9,6),(8,6),(8,4),(7,4),(7,6),(5,6),(5,2),(4,3),(4,7),(2,7),(2,2),(1,2),(1,3),(0,3)]
 
-# seg = sg.Segment2(sg.Point2(3,5),sg.Point2(3,6))
+    env_poly = poly_from_coords(coords)
+    draw(env_poly)
 
-# plt.clf()
-# v = b - a 
-# r = sg.Ray2(a,v)
-# print(r.direction())
-# print(r.is_horizontal())
-# print(r.is_vertical())
-# # print(r)
-# intersect = sg.intersection(r, seg)
-# print(type(intersect))
-# draw(intersect)
-# draw(seg)
+    adj_list = get_adj_list_of_conservative_centroid_nodes(coords)
+    for key in adj_list.keys():
+        print(key, "-->", adj_list[key])
     
-plt.show()
+    plt.show()
+
+if __name__ == "__main__":
+    main()

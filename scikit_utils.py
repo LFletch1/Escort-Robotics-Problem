@@ -10,6 +10,7 @@ Version: June 14, 2022
 # import scikit-geometry modules
 import skgeom as sg
 import numpy as np
+from skgeom.draw import draw
 
 # ----------------------------
 # Monkey Patching
@@ -134,7 +135,33 @@ def build_polygon_set_from_arrangement(arr):
 				# Move circulator
 				circ = next(outer_ccb_circulator)
 			poly_pts.append(circ.source().point())
+			# p = sg.Polygon(poly_pts)
+			# print(p)
+			# draw(p)
+			polys.append(sg.Polygon(poly_pts))
+
+	return sg.PolygonSet(polys)
+
+
+def build_list_of_polygons_from_arrangement(arr):
+	polys = []
+	# iterate over all of the faces
+	for f in arr.faces:
+		if f.is_unbounded():
+			continue
+
+		# Info about the outer connect component boundary
+		if f.has_outer_ccb():
+			poly_pts = []
+			outer_ccb_circulator = f.outer_ccb
+			first = next(outer_ccb_circulator)
+			circ = next(outer_ccb_circulator)
+			while circ != first:
+				poly_pts.append(circ.source().point())
+				# Move circulator
+				circ = next(outer_ccb_circulator)
+			poly_pts.append(circ.source().point())
 			polys.append(sg.Polygon(poly_pts))
 
 
-	return sg.PolygonSet(polys)
+	return polys
