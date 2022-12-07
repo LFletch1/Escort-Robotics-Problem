@@ -8,14 +8,16 @@ import time
 
 class State:
 
-    def __init__ (self, gp, position, halves):
+    def __init__ (self, gp, position, halves, num):
         self.gp = gp
+        self.position = position
         self.arran =  gp.arrangement
+        self.halves = halves
         self.full_polyset = self.remove_holes()
         visibility = self.compute_visib_pursue(position)
-        self.shadows = self.compute_shadows(visibility,1)
-        self.safezones = []
-        self.halves = halves
+        self.shadows = self.compute_shadows(visibility, num)
+        self.safezones = self.compute_safezones()
+        
         
     def remove_holes(self):
         # this function is used to calculate full polyset without holes
@@ -49,13 +51,41 @@ class State:
  
             if(num ==2):
                 draw(pol, facecolor="lightgreen")
-
-        # Test purpose
-        if (num == 1):
-            plt.savefig('test_results/parent.png')
-        if (num == 2):
-            plt.savefig('test_results/child.png')
         return local
+
+    def compute_safezones(self):
+        vs = RotationalSweepVisibility(self.arran)
+        p = self.position
+        face_p = self.arran.find(p)
+        vs_p = vs.compute_visibility(p, face_p)
+
+
+        unsafe_zones = np.array([])
+
+        for j in vs_p.halfedges:
+            if ( self.compute_occlusion(j)): 
+                unsafe = self.compute_unsafe_zone(j, vs)
+
+                unsafe_zones = np.append(unsafe_zones, unsafe)
+        
+        union_boolean = PolygonSet([])
+        for vs_c in unsafe_zones:
+            polyset = build_polygon_set_from_arrangement(vs_c)
+            
+            union_boolean = union_boolean.union(polyset)
+        
+
+        #polygon_set = build_polygon_set_from_arrangement(self.shadows)
+        # Extract safe regions
+        covered = union_boolean.union(self.shadows)
+        draw(covered, facecolor="violet")
+
+        enviornment_arr = build_polygon_set_from_arrangement(self.arran)
+        safezones = enviornment_arr.difference(covered)
+        #draw(safezones, facecolor="green")
+
+        return safezones
+
 
     def compute_occlusion(self,j):
         # Creates segment and sees if it overlaps
@@ -88,6 +118,9 @@ class State:
         return visibile_edges
 
     def new_state(self, escort_pos):
+
+        newstate = State(self.gp, escort_pos, self.halves, num=2)
+
         v_poly = self.compute_visib_pursue(escort_pos)
         shadows = self.compute_shadows(v_poly,2)
 
@@ -97,15 +130,13 @@ class State:
         contain_shadows = np.array([])
         for pol in shadows.polygons:
             for p in intersect.polygons:
-                if len(boolean_set.intersect(pol, p)):
+                if len(boolean_set.intersect(pol, p)) > 0:
                     print("Contaiminated!")
                     draw(pol, facecolor = "pink")
                     contain_shadows = np.append(contain_shadows, pol)
-        
-        # Test purposes
-        plt.savefig('test_results/contaminated_shadows.png')
 
         polygon_set = PolygonSet([py for py in contain_shadows])
+        newstate.shadows = polygon_set
 
         contain_poly_arr = arrangement.Arrangement()
         for v_s in v_poly.halfedges:
@@ -123,8 +154,6 @@ class State:
                 contaimin_edges = self.compute_unsafe_zone(v,vs)
                 contaiminated_edges = np.append(contaiminated_edges, contaimin_edges)
 
-        # Test Purposes
-        plt.savefig('test_results/boundary_contaminated.png')
 
         union_boolean = PolygonSet([])
         for vs_c in contaiminated_edges:
@@ -132,9 +161,29 @@ class State:
             
             union_boolean = union_boolean.union(polyset)
         draw(union_boolean, facecolor="violet")
-        plt.savefig('test_results/visibility_child.png')
-                
 
+        # Extract safe regions
+        covered = union_boolean.union(polygon_set)
+
+        plt.cla()
+        self.env_res()
+        draw(covered, facecolor="maroon")
+
+        enviornment_arr = build_polygon_set_from_arrangement(self.arran)
+        current_safezones = enviornment_arr.difference(covered)
+        draw(current_safezones, facecolor="green")
+
+        vip_contain = np.array([])
+        for safe in self.safezones.polygons:
+            for poly_safe in current_safezones.polygons:
+                if len(boolean_set.intersect(safe, poly_safe)) > 0:
+                    vip_contain = np.append(vip_contain, poly_safe)
+                    draw(poly_safe, facecolor="white")    
+
+        polygon_vip = PolygonSet([px for px in vip_contain])
+        newstate.safezones = polygon_vip
+
+        return newstate
         
 
     def env_res(self):
@@ -157,9 +206,18 @@ if __name__ == '__main__':
 
     pos = Point2(6,2)
     draw(pos, color = "black")
-    state = State(gp, pos, np_half)
+    state = State(gp, pos, np_half, 1)
 
+    plt.cla()
     state.env_res()
+    for g in state.shadows.polygons:
+        draw(g, facecolor = "pink")
+    for h in state.safezones.polygons:
+        draw(h, facecolor = "lightgreen")
+    draw(pos, color = "black")
+
+    # Test purpose
+    plt.savefig("test_results/current_state.png")
 
 
 
@@ -167,8 +225,18 @@ if __name__ == '__main__':
     plt.cla()
     state.env_res()
     draw(next_pos, color = "red")
-    state.new_state(next_pos)
+    future_state = state.new_state(next_pos)
+
+    plt.cla()
+    future_state.env_res()
+    for g in future_state.shadows.polygons:
+        draw(g, facecolor = "pink")
+    for h in future_state.safezones.polygons:
+        draw(h, facecolor = "lightgreen")
+    draw(next_pos, color = "red")
     
+    # Test Purpose
+    plt.savefig("test_results/next_state.png")
     
 
     plt.show()
