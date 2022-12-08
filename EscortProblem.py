@@ -16,14 +16,14 @@ from Environment import *
 # general_polygon.py
 
 class EscortProblem:
-    def __init__(self, env_file_path, root, goal):
+    def __init__(self, env_file_path, start_pos, vip_goal_pos):
         '''
         env_file_path - string to json file containing coordinates of environment
         root - value of starting point in graph, must correspond to a node in the adjacency list. Example: (3,8)
         goal - goal point in the environment, does not have to be a node in adjacency list. Represents, VIP destination. Example: (4,16)
         '''
-        self.root = root 
-        self.goal = goal
+        self.start_pos = start_pos
+        self.vip_goal_pos = vip_goal_pos
 
         coords = coords_from_json(env_file_path)
         self.coordinate_adj_list = get_adj_list_of_conservative_centroid_nodes(coords)
@@ -35,56 +35,80 @@ class EscortProblem:
         self.environment = Environment(gp, np_half, self.coordinate_adj_list)
 
     # BFS algorithm
-    def bfs(self): 
-        state  = self.environment.get_starting_state(list(self.coordinate_adj_list.keys())[0]) 
-        state2 = self.environment.get_starting_state(list(self.coordinate_adj_list.keys())[0]) 
-        print(state == state2)
+    def bfs_safe_path(self): 
+        start_state = self.environment.get_starting_state(self.start_pos)
+        visited = {}
+        visited[start_state] = True
+        queue = deque([start_state]) 
+        path = [] 
+        end_state = None
+        while queue:
+            # print(queue)
+            # Dequeue a vertex from queue
+            current_state = queue.popleft()
 
-        for key1 in self.coordinate_adj_list.keys():
-            for key2 in self.coordinate_adj_list.keys():
-                print(key1, "==", key2, end=" ")
-                s1 = self.environment.get_starting_state(key1)
-                s2 = self.environment.get_starting_state(key2)
-                print(s1 == s2)
-        # path = []
-        # visited, queue = set(), deque([self.root]) 
-        # visited.add(self.root)
-        # while queue:
-        #     # Dequeue a vertex from queue
-        #     vertex = queue.popleft()
-        #     print(str(vertex) + " ", end="")
+            # Check to see if VIP goal position is inside a safezone. If yes, then path has been found
+            goal_point = sg.Point2(self.vip_goal_pos[0], self.vip_goal_pos[1])
+            if current_state.safezones.locate(goal_point):
+                # print("Safe Path Found!")
+                # self.environment.draw_state(current_state)
+                draw(goal_point, color="yellow")
+                end_state = current_state
+                break
 
-        #     # If not visited, mark it as visited, and
-        #     # enqueue it
-        #     for neighbour in self.adjacency_list[vertex]:
-        #         if neighbour not in visited: # Check if safe_zone already appeared at this point
-        #             visited.add(neighbour)
-        #             queue.append(neighbour)
+            # Prune this path if no safezones exists?
+            # elif not current_state.safezones:
 
-        # return path 
+            # enqueue it
+            for n_pos in current_state.neighbors_pos:
+                neighbor = self.environment.transition_blackbox(current_state, n_pos)
+                # if not visited[False]
+                if neighbor not in visited: # Check if state has already been visited
+                    # visited.add(neighbour)
+                    visited[neighbor] = True
+                    queue.append(neighbor)
+        
+        if end_state != None:
+            path = []
+            previous_state = end_state
+            # path.insert(0, end_state.pos)
+            while previous_state != None:
+                path.insert(0,previous_state.pos)
+                previous_state = previous_state.parent
+            return path
+        else:
+            return None
+
+
+
 
     def show_path(self, path):
         # path is a list of tuples that represent ordered pairs of coordinates to transition to in the environment
         # [(2,11), (1,9), (2,6), (8,6)]
         state = self.environment.get_starting_state(path[0]) 
         self.environment.draw_state(state)
+        goal_point = sg.Point2(self.vip_goal_pos[0], self.vip_goal_pos[1])
+        draw(goal_point, color="yellow")
         plt.show()
         for next_pos in path[1:]:
             plt.clf()
             state = self.environment.transition_blackbox(state, next_pos)
             self.environment.draw_state(state)
+            draw(goal_point, color="yellow")
             plt.show()
             
         pass
 
 
 def main():
-    escort_prob = EscortProblem("Envs/tetris_env.json", (2,10.5), (1.333, 8.667))
-    # Should be able to call path = escort_prob.bfs() and will return a successful path
-    escort_prob.bfs()
+    escort_prob = EscortProblem("Envs/tetris_env.json", (2,10.5), (12.5, 1))
+    escort_prob = EscortProblem("Envs/rooms.json", (10.0, 16.667), (100, 45))
+    # Should be able to call path = escort_prob.bfs_safe_path() and will return a successful path
+    path = escort_prob.bfs_safe_path()
+    # print(path)
 
     # Tetris test path
-    path = [(2,10.5), (1.333, 8.667), (2.0, 6.0), (1.333, 8.667), (2.0, 6.0), (8.0, 6.0), (14.0, 6.0)]
+    # path = [(2,10.5), (1.333, 8.667), (2.0, 6.0), (1.333, 8.667), (2.0, 6.0), (8.0, 6.0), (14.0, 6.0)]
 
     # Rooms test path
     # escort_prob.coordinate_adj_list[(60.0, 66.667)] = []

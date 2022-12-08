@@ -6,7 +6,7 @@ class State:
         self.pos = position # Tuple (x,y)
         self.contaminated_shadows = contaminated_shadows # PolygonSet
         self.safezones = safezones  # PolygonSet
-        self.neighbors = neighbors # List[(x,y),(x,y)]
+        self.neighbors_pos = neighbors # List[(x,y),(x,y)]
         self.safezones_tuple = get_tuple_from_polygon_set(self.safezones)
         self.shadows_tuple = get_tuple_from_polygon_set(self.contaminated_shadows)
         self.parent = parent
@@ -18,6 +18,8 @@ class State:
         pass
 
     def __eq__(self, other):
+        if type(self) != type(other):
+            return False
         shadows_diff = self.contaminated_shadows.difference(other.contaminated_shadows)
         # print(shadows_diff)
         if shadows_diff:
