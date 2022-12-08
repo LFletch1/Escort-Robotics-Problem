@@ -32,9 +32,8 @@ class EscortProblem:
         np_half = np.array([])
         for ha in gp.arrangement.halfedges:
             np_half = np.append(np_half, sg.Segment2(ha.source().point(), ha.target().point()))
-        print(self.coordinate_adj_list)
 
-        self.environment = Environment(gp, np_half, self.coordinate_adj_list,1)
+        self.environment = Environment(gp, np_half, self.coordinate_adj_list)
 
     # BFS algorithm
     def bfs(self):
@@ -75,19 +74,35 @@ class EscortProblem:
         plt.show()
 
         plt.clf()
-        new_state3 = self.environment.transition_blackbox(new_state2, (8.0, 6.0))
+        new_state3 = self.environment.transition_blackbox(new_state2, (1.333, 8.667))
         self.environment.draw_state(new_state3)
         plt.show()
+
+
+        # plt.clf()
+        # new_state3 = self.environment.transition_blackbox(new_state2, (8.0, 6.0))
+        # self.environment.draw_state(new_state3)
+        # plt.show()
     
 
     def show_path(self, path):
+        state = self.environment.get_starting_state(path[0]) 
+        self.environment.draw_state(state)
+        plt.show()
+        for next_pos in path[1:]:
+            plt.clf()
+            state = self.environment.transition_blackbox(state, next_pos)
+            self.environment.draw_state(state)
+            plt.show()
+            
         # path is a list of tuples that represent ordered transitions to make in the environment
         # [(2,11), (1,9), (2,6), (8,6)]
         pass
 
 def main():
-    prob = EscortProblem("Envs/tetris_env.json", (2,10.5), (1.333, 8.667))
-    prob.test_env()
+    escort_prob = EscortProblem("Envs/tetris_env.json", (2,10.5), (1.333, 8.667))
+    path = [(2,10.5), (1.333, 8.667), (2.0, 6.0), (1.333, 8.667), (2.0, 6.0), (8.0, 6.0), (14.0, 6.0)]
+    escort_prob.show_path(path)
 
 if __name__ == "__main__":
     main()

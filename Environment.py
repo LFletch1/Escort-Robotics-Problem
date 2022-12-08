@@ -10,8 +10,7 @@ import time
 
 class Environment:
 
-    def __init__ (self, gp, halves, adj_list, num):
-        # print("STATE")
+    def __init__ (self, gp, halves, adj_list):
         self.gp = gp
         self.arran =  gp.arrangement
         self.halves = halves
@@ -42,7 +41,7 @@ class Environment:
 
         return vs_p
     
-    def compute_shadows(self, visible_arr,num):
+    def compute_shadows(self, visible_arr):
         x_polyset = build_polygon_set_from_arrangement(visible_arr)
 
         local = self.full_polyset.difference(x_polyset)
@@ -74,11 +73,13 @@ class Environment:
             polyset = build_polygon_set_from_arrangement(vs_c)
             union_boolean = union_boolean.union(polyset)
         
-        #polygon_set = build_polygon_set_from_arrangement(self.shadows)
+        
+        shadows_set = self.compute_shadows(vs_p)
+        # polygon_set = build_polygon_set_from_arrangement(self.shadows)
         # Extract safe regions
-        # covered = union_boolean.union(self.shadows)
-        vis_pur = build_polygon_set_from_arrangement(vs_p)
-        covered = union_boolean.union(vis_pur)
+        covered = union_boolean.union(shadows_set)
+        # vis_pur = build_polygon_set_from_arrangement(vs_p)
+        # covered = union_boolean.union(vis_pur)
         # draw(covered, facecolor="violet")
 
         enviornment_arr = build_polygon_set_from_arrangement(self.arran)
@@ -125,7 +126,7 @@ class Environment:
         pos = sg.Point2(new_position[0],new_position[1])
         # new_state.parent = state
         v_poly = self.compute_visib_pursue(pos)
-        shadows = self.compute_shadows(v_poly,2)
+        shadows = self.compute_shadows(v_poly)
 
         intersect = state.contaminated_shadows.intersection(shadows)
 
@@ -195,7 +196,7 @@ class Environment:
         '''Return starting state, every shadow is contaminated'''
         p = sg.Point2(pos[0], pos[1])
         v_poly = self.compute_visib_pursue(p)
-        start_shadows = self.compute_shadows(v_poly,2)
+        start_shadows = self.compute_shadows(v_poly)
         start_safezones = self.compute_safezones(p)
         return State(pos, parent=None, contaminated_shadows=start_shadows, safezones=start_safezones, neighbors=self.adj_list[pos])
 
@@ -209,55 +210,4 @@ class Environment:
     def env_res(self):
         for ha in self.arran.halfedges:
             draw(ha.curve())
-
-
-if __name__ == '__main__':
-    print("Compiled")
     
-    # fig, ax = plt.subplots()
-
-    # gp = GeneralPolygon.load_from_json("Envs/rooms.json", verbose=True)
-    # gp.build_arrangement(verbose=True)
-
-    # np_half = np.array([])
-    # for ha in gp.arrangement.halfedges:
-    #     draw(ha.curve())
-    #     np_half = np.append(np_half, Segment2(ha.source().point(), ha.target().point()))
-
-
-    # pos = Point2(6,2)
-    # draw(pos, color = "black")
-    # state = State(gp, pos, np_half, 1)
-
-    # plt.cla()
-    # state.env_res()
-    # for g in state.shadows.polygons:
-    #     draw(g, facecolor = "pink")
-    # for h in state.safezones.polygons:
-    #     draw(h, facecolor = "lightgreen")
-    # draw(pos, color = "black")
-
-    # # Test purpose
-    # plt.savefig("test_results/current_state.png")
-
-
-
-    # next_pos = Point2(6,5)
-    # plt.cla()
-    # state.env_res()
-    # draw(next_pos, color = "red")
-    # future_state = state.new_state(next_pos)
-
-    # plt.cla()
-    # future_state.env_res()
-    # for g in future_state.shadows.polygons:
-    #     draw(g, facecolor = "pink")
-    # for h in future_state.safezones.polygons:
-    #     draw(h, facecolor = "lightgreen")
-    # draw(next_pos, color = "red")
-    
-    # # Test Purpose
-    # plt.savefig("test_results/next_state.png")
-    
-
-    # plt.show()
