@@ -18,6 +18,7 @@ class State:
         visibility = self.compute_visib_pursue(position)
         self.shadows = self.compute_shadows(visibility, num)
         self.safezones = self.compute_safezones()
+        self.parent = None
         
         
     def remove_holes(self):
@@ -118,9 +119,12 @@ class State:
 
         return visibile_edges
 
-    def new_state(self, escort_pos):
+    def new_state(self, parent, escort_pos):
+
+        
 
         newstate = State(self.gp, escort_pos, self.halves, num=2)
+        newstate.parent = parent
 
         v_poly = self.compute_visib_pursue(escort_pos)
         shadows = self.compute_shadows(v_poly,2)
