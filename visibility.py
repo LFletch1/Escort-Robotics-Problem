@@ -4,6 +4,8 @@ from matplotlib import pyplot as plt
 from general_polygon import GeneralPolygon
 from scikit_utils import *
 import time
+from collections import deque
+from transition import State
 
 # Documentation and Demos used in this code:
 # https://matplotlib.org/stable/gallery/event_handling/coords_demo.html
@@ -11,58 +13,143 @@ import time
 # general_polygon.py
 
 class VisPoly:
-    def __init__(self, line, gp, halve):
+    def __init__(self, line, gp, halve, interval):
         self.gp = gp
         self.line = line
         self.halves = halve
-        self.xs = line.get_xdata()
-        self.ys = line.get_ydata()
         self.arran = gp.arrangement
-        self.full_polyset = self.remove_holes()
-        self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
-        # self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
-        self.env_res()
+        self.full_polyset = build_polygon_set_from_arrangement(gp.arrangement)
+        self.cid = line.figure.canvas.mpl_connect('button_press_event', self.click_handle)
+        self.cid = line.figure.canvas.mpl_connect('key_press_event', self.key_handle)
+        self.shadow_polyset = PolygonSet()
+        self.unsafe_polyset = PolygonSet()
+        self.shadows = {}
+        self.safe_zones = {}
+        self.interval = interval
+        self(( int(line.get_xdata() ) , int (line.get_ydata()) ))
+        # self(( 5 , 5 ))
 
-    def __call__(self, event):
-        # print('click', event)
-        # check if click is inside of line axes
-        if event.inaxes!=self.line.axes or not self.gp.contains(event.xdata, event.ydata): 
+    # ---------------------------------
+    # state is represented by:
+    # - where the escort is 
+    # - set of shadows and contamination status
+    # - set of safe zones and VIP contamination status
+    # ---------------------------------
+    def bfs(self):
+        path = []
+        startNode = State(gp, Point2(self.xs, self.ys), np_half, 1)
+        print(startNode.position)
+
+        q = deque()
+
+        q.append(startNode)
+        visitedNodes = {}
+
+        while q:
+            current = q.popleft()
+
+            # print("Current parent is " , current.parent)
+            print("Current is at ", current.position)
+
+            # IF WE MEET GOAL
+            # [ if our goal is in one of the safe zones]
+            
+            # TODO : Change this if condition
+            # if current.coords == goal:
+            #     print("Found goal")
+
+            #     while current.parent:
+            #         path.append( current.coords ) 
+            #         current = current.parent
+                
+            #     print("path: ", path)
+            #     for i in path:
+            #         plt.plot(i[0], i[1], '.')
+            #     self.line.figure.canvas.draw()
+            #     return
+
+            neighbors = [
+                        (float(current.position.x()-self.interval), float(current.position.y())),
+                        (float(current.position.x()+self.interval), float(current.position.y())),
+                        (float(current.position.x()), float(current.position.y()-self.interval)),
+                        (float(current.position.x()), float(current.position.y()+self.interval))
+                        ]
+                        
+            for n in neighbors:
+                if self.gp.contains(n[0], n[1]): 
+
+                    newstate = current.new_state(current, Point2(n[0], n[1]))
+
+                    # first check if newstate pos in not in dictionary
+                    if not n in visitedNodes:
+                        visitedNodes[n] = [current.safezones]
+                        q.append( newstate )
+
+                    # then check if safezones is not in list of previous safezones
+                    # THIS IS NOT WORKING (CYCLES ARE OCCURING)
+                    # elif not newstate.safezones in visitedNodes[n]: 
+                    #     visitedNodes[n].append(current.safezones)
+                    #     q.append( newstate )
+                    else:
+                        print("Already visited")
+
+        print(visitedNodes)
+        print("Exited")
+        
+
+    def key_handle(self, event):
+        # print(event.key)
+        if event.key == 'up':
+            self((self.xs, self.ys+self.interval))
+        elif event.key == 'down':
+            self((self.xs, self.ys-self.interval))
+        elif event.key == 'right':
+            self((self.xs+self.interval, self.ys))
+        elif event.key == 'left':
+            self((self.xs-self.interval, self.ys))
+        elif event.key == 'B':
+            self.bfs()
+
+    def click_handle(self, event):
+        # self.env_reset()
+        self((event.xdata, event.ydata))
+
+    def __call__(self, coords):
+        print(coords[0], coords[1])
+        if not self.gp.contains(coords[0], coords[1]): 
             print("NOT IN BOUNDS")
             return
         # update position of x,y point on screen
-        self.xs = event.xdata 
-        self.ys = event.ydata
-        self.line.set_data(self.xs, self.ys)
+        self.xs = coords[0] 
+        self.ys = coords[1]
         # clear environment
-        plt.cla()
         self.env_res()
-        # plot point of escort
-        plt.plot(event.xdata, event.ydata, '.')
-        # compute viz of escort
+        # vis_p = visibility polygon of escort
+        # vis_shadow = visibility polygon of shadows (2nd level)
         vis_p, vis_shadow = self.compute_visib_pursue()
         self.compute_shadow_vis(vis_shadow)
         self.compute_shadows(vis_p)
+        self.compute_safezones(vis_p, vis_shadow)
         self.line.figure.canvas.draw()
 
     def env_res(self):
+        plt.cla()
         ax.set_title('click to build line segments')
         for ha in self.arran.halfedges:
             draw(ha.curve())
+        plt.plot(self.xs, self.ys, '.')
 
-    def remove_holes(self):
-        # this function is used to calculate full polyset without holes
-        # for use in shadow drawing function
 
-        holeArrangement = arrangement.Arrangement()
-        for i, poly in enumerate(self.gp.polygons):
-            for j, hole in enumerate(poly.holes):
-                for e in hole.edges:
-                    holeArrangement.insert(e)
-        y_polyset = build_polygon_set_from_arrangement(self.arran)
-        hole_polyset = build_polygon_set_from_arrangement(holeArrangement)
-        return y_polyset.difference(hole_polyset)
-
-    def compute_occlusion(self,j,p):
+    def draw_poly(self, polygon):
+        plt.cla()
+        for poly in polygon.polygons:
+            draw(poly, facecolor = "lightgreen")
+        
+    # ---------------------------------
+    # compute the visibility of the pursuer
+    # returns visibility region of pursuer AND shadows
+    # ---------------------------------
+    def is_occlusion_ray(self,j,p):
         # Creates segment and sees if it overlaps
         seg = Segment2(j.source().point(), j.target().point())
 
@@ -71,96 +158,78 @@ class VisPoly:
                 return False
         return True
 
+    # ---------------------------------
+    # compute the visibility of the pursuer
+    # returns visibility region of pursuer AND shadows
+    # ---------------------------------
+    def compute_visib_pursue(self):
+        vs = RotationalSweepVisibility(self.arran)
+        p = Point2(self.xs, self.ys)
+        face_p = arr.find(p)
+        vis_p = vs.compute_visibility(p, face_p)
+        unsafe_zones = np.array([])
+
+        for j in vis_p.halfedges:
+            # if segment is occlusion ray
+            if ( self.is_occlusion_ray(j,p) ): 
+                draw(j.curve(), color='red', visible_point = False)
+                unsafe = self.compute_unsafe_zone(j, vs)
+                unsafe_zones = np.append(unsafe_zones, unsafe)
+            else:
+                draw(j.curve(), color='black', visible_point = False)
+        return vis_p, unsafe_zones
+
+    # ---------------------------------
+    # divide contaminated shadow edges into points
+    # calculate unsafe zones from those points
+    # ---------------------------------
     def compute_unsafe_zone(self,j, visibility):
         # divide segment in to 10 points for now
         pt1 = np.array( (j.curve()[0].x(), j.curve()[0].y()) )
         pt2 = np.array( (j.curve()[1].x(), j.curve()[1].y()) )
         # replace 10 with number proportional to length of segment using np.linalg.norm
         points = np.linspace( pt1, pt2 , 10)[1:-1]
-
-        #print("POINTS:", points)
-
         visibile_edges = np.array([])
-
         for point in points:
-
             current_point = Point2(point[0], point[1])
             current_face = arr.find(current_point)
             vs_current = visibility.compute_visibility(current_point, current_face)
-
             visibile_edges = np.append(visibile_edges, vs_current)
 
-        # for p in points:
-        #     draw(p, color='blue', visible_point = True)
-
         return visibile_edges
-        
-
-    def compute_visib_pursue(self):
-        vs = RotationalSweepVisibility(self.arran)
-        p = Point2(self.xs, self.ys)
-        face_p = arr.find(p)
-        vs_p = vs.compute_visibility(p, face_p)
-
-
-        unsafe_zones = np.array([])
-
-        for j in vs_p.halfedges:
-            # if segment is occlusion ray
-            if ( self.compute_occlusion(j,p) ): 
-                draw(j.curve(), color='red', visible_point = False)
-                unsafe = self.compute_unsafe_zone(j, vs)
-
-                unsafe_zones = np.append(unsafe_zones, unsafe)
-            else:
-                draw(j.curve(), color='black', visible_point = False)
-        return vs_p, unsafe_zones
-
 
     def compute_shadow_vis(self, shadow_vis_edges):
-        total_polyset = PolygonSet()
+        self.unsafe_polyset = PolygonSet()
         for vis in shadow_vis_edges:
             polyset = build_polygon_set_from_arrangement(vis)
-            total_polyset = total_polyset.union(polyset)
-
-            # for poly in polyset.polygons:
-            #     draw(poly, facecolor = "lightgreen")
-        for poly in total_polyset.polygons:
-            draw(poly, facecolor = "lightgreen")
-
+            self.unsafe_polyset = self.unsafe_polyset.union(polyset)
+        # these are the 'unsafe' regions that are in sight of 
+        # contaminated shadows
+        for poly in self.unsafe_polyset.polygons:
+            draw(poly, facecolor = "orange")
 
     def compute_shadows(self, visible_arr):
-        # shadows = self.arran.difference(visible_arr)
-        #print("computing shadows")
+        # update shadow polyset
+        # is difference between full polyset and visible region
         x_polyset = build_polygon_set_from_arrangement(visible_arr)
+        self.shadow_polyset = self.full_polyset.difference(x_polyset)
+        for pol in self.shadow_polyset.polygons:
+            draw(pol, facecolor="darkblue")
+            # add shadow to shadow dict with false
+            self.shadows[pol] = False 
 
-        local = self.full_polyset.difference(x_polyset)
-        for pol in local.polygons:
-            draw(pol, facecolor="lightblue")
-        #gps = [GeneralPolygon([x]) for x in local.polygons]
-        # for j in shadows.halfedges:
-        #    draw(j.curve(), color="green", visible_arr = False)
+    def compute_safezones(self, vis_p, vis_shadow):
+        # update shadow polyset
+        # is difference between full polyset and visible region
+        # x_polyset = build_polygon_set_from_arrangement(visible_arr)
+        self.safe_polyset = Polygon()
+        self.safe_polyset = self.full_polyset.difference(self.shadow_polyset)
+        self.safe_polyset = self.safe_polyset.difference(self.unsafe_polyset)
+        for pol in self.safe_polyset.polygons:
+            draw(pol, facecolor="lightgreen")
+            # add shadow to shadow dict with false
+            self.safe_zones[pol] = False 
 
-
-def env_setup():
-    # Set up environment
-    M = 50
-    boundary = [
-        Segment2(Point2(-M, -M), Point2(-M, M)), Segment2(Point2(-M, M), Point2(M, M)),
-        Segment2(Point2(M, M), Point2(M, -M)), Segment2(Point2(M, -M), Point2(-M, -M))
-    ]
-    box = [
-        Segment2(Point2(30, -30), Point2(-30, 30)), #Segment2(Point2(-30, 30), Point2(30, 30)),
-        Segment2(Point2(30, 30), Point2(30, -30)), Segment2(Point2(30, -30), Point2(-30, -30))
-    ]
-    arr = arrangement.Arrangement()
-    for s in boundary:
-        arr.insert(s)
-    for s in box:
-        arr.insert(s)
-    for ha in arr.halfedges:
-        draw(ha.curve())
-    return arr 
 
 if __name__ == '__main__':
     fig, ax = plt.subplots()
@@ -172,16 +241,15 @@ if __name__ == '__main__':
 
     # Draw the arrangement
     for he in gp.arrangement.halfedges:
-        #np_half = np.append(np_half, (he.source().point().x(), he.source().point().y(), he.target().point().x(), he.target().point().y()))
         np_half = np.append(np_half, Segment2(he.source().point(), he.target().point()))
         draw(he.curve(), visible_point=False)
         
-    #np_half = np_half.reshape([-1, 4])
-    # arr = env_setup()
     arr = gp.arrangement
 
-    line, = ax.plot(0, 0)  # empty line
-    vis_poly = VisPoly(line, gp, np_half)
+    interval = 10
+    starting_pos = (5,5)
 
+    line, = ax.plot(starting_pos[0], starting_pos[1])  # empty line
+    vis_poly = VisPoly(line, gp, np_half, interval)
 
     plt.show()
