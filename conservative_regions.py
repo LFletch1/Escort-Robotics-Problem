@@ -349,7 +349,7 @@ def get_adj_list_of_conservative_centroid_nodes(coords):
 
 
 def main():   
-    coords = coords_from_json("Envs/rooms3.json")
+    coords = coords_from_json("Envs/tetris_env.json")
     env_poly = poly_from_coords(coords)
     draw(env_poly)
 
