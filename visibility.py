@@ -36,36 +36,25 @@ class VisPoly:
     # - set of safe zones and VIP contamination status
     # ---------------------------------
     def bfs(self):
-
-        # class Node:
-        #     def __init__(self, coords, shadows, safe_zones, parent):
-        #         self.coords = coords
-        #         self.shadows = shadows
-        #         self.safe_zones = safe_zones
-        #         self.parent = parent
-
-
         path = []
         startNode = State(gp, Point2(self.xs, self.ys), np_half, 1)
         print(startNode.position)
 
-
-        # print (type(self.xs))
-        # goal = (35,85)
-        # print(goal)
-
         q = deque()
 
-        # q.append((startNode.x, startNode.y))
         q.append(startNode)
-        visitedNodes = []
+        visitedNodes = {}
 
         while q:
             current = q.popleft()
-            # print("Current: ", current.x, current.y)
 
-            # print (current.safe_zones.keys() ) 
+            # print("Current parent is " , current.parent)
+            print("Current is at ", current.position)
 
+            # IF WE MEET GOAL
+            # [ if our goal is in one of the safe zones]
+            
+            # TODO : Change this if condition
             # if current.coords == goal:
             #     print("Found goal")
 
@@ -78,48 +67,36 @@ class VisPoly:
             #         plt.plot(i[0], i[1], '.')
             #     self.line.figure.canvas.draw()
             #     return
-            # for zone in current.safe_zones:
-                # print("Zone: ", zone)
-                # if zone.contains(current.x, current.y): 
-                # if zone.oriented_side(sg.Point2(current.x, current.y)):
-                #     print("FOUND ANSWER")
-                #     return
-                # print (zone.area() )
 
             neighbors = [
-                        (current.position.x()-self.interval, current.position.y()),
-                        (current.position.x()+self.interval, current.position.y()),
-                        (current.position.x(), current.position.y()-self.interval),
-                        (current.position.x(), current.position.y()+self.interval)
+                        (float(current.position.x()-self.interval), float(current.position.y())),
+                        (float(current.position.x()+self.interval), float(current.position.y())),
+                        (float(current.position.x()), float(current.position.y()-self.interval)),
+                        (float(current.position.x()), float(current.position.y()+self.interval))
                         ]
                         
             for n in neighbors:
                 if self.gp.contains(n[0], n[1]): 
-                    print("Checking in ", n , " in there->")
+
+                    newstate = current.new_state(current, Point2(n[0], n[1]))
+
+                    # first check if newstate pos in not in dictionary
                     if not n in visitedNodes:
-                        newstate = current.new_state(Point2(n[0], n[1]))
+                        visitedNodes[n] = [current.safezones]
                         q.append( newstate )
-                        print("Adding node at ", )
 
-                        visitedNodes.append( n )
+                    # then check if safezones is not in list of previous safezones
+                    # THIS IS NOT WORKING (CYCLES ARE OCCURING)
+                    # elif not newstate.safezones in visitedNodes[n]: 
+                    #     visitedNodes[n].append(current.safezones)
+                    #     q.append( newstate )
                     else:
-                        print("ALready in there")
-
+                        print("Already visited")
 
         print(visitedNodes)
         print("Exited")
         
 
-
-
-
-
-
-
-
-
-
-                
     def key_handle(self, event):
         # print(event.key)
         if event.key == 'up':
@@ -269,7 +246,7 @@ if __name__ == '__main__':
         
     arr = gp.arrangement
 
-    interval = 10
+    interval = 5
     starting_pos = (5,5)
 
     line, = ax.plot(starting_pos[0], starting_pos[1])  # empty line
