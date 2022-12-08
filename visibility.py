@@ -246,7 +246,7 @@ if __name__ == '__main__':
         
     arr = gp.arrangement
 
-    interval = 5
+    interval = 10
     starting_pos = (5,5)
 
     line, = ax.plot(starting_pos[0], starting_pos[1])  # empty line
