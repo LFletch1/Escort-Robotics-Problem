@@ -5,6 +5,7 @@ from general_polygon import GeneralPolygon
 from scikit_utils import *
 import time
 from collections import deque
+from transition import State
 
 # Documentation and Demos used in this code:
 # https://matplotlib.org/stable/gallery/event_handling/coords_demo.html
@@ -27,8 +28,6 @@ class VisPoly:
         self.interval = interval
         self(( int(line.get_xdata() ) , int (line.get_ydata()) ))
         # self(( 5 , 5 ))
-    
-    
 
     # ---------------------------------
     # state is represented by:
@@ -38,25 +37,22 @@ class VisPoly:
     # ---------------------------------
     def bfs(self):
 
-        class Node:
-            def __init__(self, coords, shadows, safe_zones, parent):
-                self.coords = coords
-                self.shadows = shadows
-                self.safe_zones = safe_zones
-                self.parent = parent
-
-        # def stateUpdate(self, Node):
-        #     ## take in node and new position, returns node
-        #     return Node
+        # class Node:
+        #     def __init__(self, coords, shadows, safe_zones, parent):
+        #         self.coords = coords
+        #         self.shadows = shadows
+        #         self.safe_zones = safe_zones
+        #         self.parent = parent
 
 
         path = []
-        startNode = Node( (self.xs, self.ys), self.shadows, self.safe_zones, None)
-        print(startNode.coords)
+        startNode = State(gp, Point2(self.xs, self.ys), np_half, 1)
+        print(startNode.position)
+
 
         # print (type(self.xs))
-        goal = (35,85)
-        print(goal)
+        # goal = (35,85)
+        # print(goal)
 
         q = deque()
 
@@ -70,18 +66,18 @@ class VisPoly:
 
             # print (current.safe_zones.keys() ) 
 
-            if current.coords == goal:
-                print("Found goal")
+            # if current.coords == goal:
+            #     print("Found goal")
 
-                while current.parent:
-                    path.append( current.coords ) 
-                    current = current.parent
+            #     while current.parent:
+            #         path.append( current.coords ) 
+            #         current = current.parent
                 
-                print("path: ", path)
-                for i in path:
-                    plt.plot(i[0], i[1], '.')
-                self.line.figure.canvas.draw()
-                return
+            #     print("path: ", path)
+            #     for i in path:
+            #         plt.plot(i[0], i[1], '.')
+            #     self.line.figure.canvas.draw()
+            #     return
             # for zone in current.safe_zones:
                 # print("Zone: ", zone)
                 # if zone.contains(current.x, current.y): 
@@ -91,21 +87,25 @@ class VisPoly:
                 # print (zone.area() )
 
             neighbors = [
-                        (current.coords[0]-self.interval, current.coords[1]),
-                        (current.coords[0]+self.interval, current.coords[1]),
-                        (current.coords[0], current.coords[1]-self.interval),
-                        (current.coords[0], current.coords[1]+self.interval),
+                        (current.position.x()-self.interval, current.position.y()),
+                        (current.position.x()+self.interval, current.position.y()),
+                        (current.position.x(), current.position.y()-self.interval),
+                        (current.position.x(), current.position.y()+self.interval)
                         ]
                         
             for n in neighbors:
-                if self.gp.contains(current.coords[0], current.coords[1]): 
+                if self.gp.contains(n[0], n[1]): 
                     print("Checking in ", n , " in there->")
                     if not n in visitedNodes:
-                        print("Appending", n)
-                        q.append(Node(n, current.shadows, current.safe_zones, current))
+                        newstate = current.new_state(Point2(n[0], n[1]))
+                        q.append( newstate )
+                        print("Adding node at ", )
+
                         visitedNodes.append( n )
                     else:
                         print("ALready in there")
+
+
         print(visitedNodes)
         print("Exited")
         
@@ -269,7 +269,7 @@ if __name__ == '__main__':
         
     arr = gp.arrangement
 
-    interval = 2
+    interval = 10
     starting_pos = (5,5)
 
     line, = ax.plot(starting_pos[0], starting_pos[1])  # empty line
