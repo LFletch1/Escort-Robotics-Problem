@@ -334,17 +334,17 @@ def get_adj_list_of_conservative_centroid_nodes(coords):
     adjacency_list = {} 
     for poly in poly_list:
         centroid = sg.centroid(poly)
-        adjacency_list[(float(centroid.x()), float(centroid.y()))] = []
+        adjacency_list[(round(float(centroid.x()),3), round(float(centroid.y()),3))] = []
     for i in range(len(poly_list)):
         for j in range(i+1, len(poly_list)):
             if polys_share_edge(poly_list[i], poly_list[j]):
                 cent1 = sg.centroid(poly_list[i])
                 cent2 = sg.centroid(poly_list[j])
-                draw(sg.Segment2(cent1, cent2), color="red")
-                draw(cent1, color="red")
-                draw(cent2, color="red")
-                adjacency_list[(float(cent1.x()),float(cent1.y()))].append((float(cent2.x()),float(cent2.y()))) 
-                adjacency_list[(float(cent2.x()),float(cent2.y()))].append((float(cent1.x()),float(cent1.y()))) 
+                # draw(sg.Segment2(cent1, cent2), color="red")
+                # draw(cent1, color="red")
+                # draw(cent2, color="red")
+                adjacency_list[(round(float(cent1.x()),3), round(float(cent1.y()),3))].append((round(float(cent2.x()),3), round(float(cent2.y()),3))) 
+                adjacency_list[(round(float(cent2.x()),3), round(float(cent2.y()),3))].append((round(float(cent1.x()),3), round(float(cent1.y()),3))) 
     return adjacency_list
 
 
@@ -354,6 +354,7 @@ def main():
     draw(env_poly)
 
     adj_list = get_adj_list_of_conservative_centroid_nodes(coords)
+    print(adj_list)
     
     plt.show()
 
