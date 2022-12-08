@@ -1,4 +1,5 @@
 import skgeom as sg
+import json
 from skgeom.draw import draw
 import matplotlib.pyplot as plt
 import math
@@ -91,38 +92,6 @@ def get_environment_reflex_points(segments, env_polygon):
         reflex_angle_points.append(last_point) 
 
     return reflex_angle_points
-
-
-def get_environment_corner_lines(coords):
-    poly = poly_from_coords(coords) 
-    polygon_set = sg.PolygonSet([poly])
-
-    env_edges = get_segments_from_coords(coords)
-    env_rays = []
-    for i in range(len(coords)):
-        for j in range(i+1, len(coords)):
-
-            a = sg.Point2(coords[i][0],coords[i][1])
-            b = sg.Point2(coords[j][0],coords[j][1])
-            line = sg.Segment2(a,b)
-
-            no_intersections = True
-            for edge in env_edges:
-                intersect = sg.intersection(edge,line)
-
-                if intersect != None:
-                    # print(lines_share_endpoint(line,segment))
-                    if not lines_share_endpoint(line, edge):
-                        no_intersections = False
-                        break
-                
-            if no_intersections:
-                mid_x = (line.point(0).x() + line.point(1).x()) / 2
-                mid_y = (line.point(0).y() + line.point(1).y()) / 2
-                mid_point = sg.Point2(mid_x ,mid_y)
-                if polygon_set.locate(mid_point):
-                    env_rays.append(line)
-    return env_rays
 
 
 def midpoint(segment):
@@ -324,13 +293,29 @@ def polys_share_edge(poly1, poly2):
     for edge1 in poly1.edges:
         for edge2 in poly2.edges:
             if equal_segments(edge1, edge2):
-                # cent1 = sg.centroid(poly1)
-                # cent2 = sg.centroid(poly2)
-                # draw(sg.Segment2(cent1, cent2), color="red")
-                # draw(cent1, color="red")
-                # draw(cent2, color="red")
                 return True
     return False
+
+
+def coords_from_json(file_path):
+    '''Returns simple tuple of coords from JSON'''
+    try:
+        with open( file_path ) as json_file :
+            data = json.load(json_file)
+    except EnvironmentError: # parent of IOError, OSError *and* WindowsError where available
+        print (f"Error opening file: {file_path}")
+        return
+
+    # Step 1: Read in the contours
+    for contour in data["contours"]:
+        coordinates = []
+
+        for point in contour:
+            xval = point["x"]
+            yval = point["y"]
+            coordinates.append((xval, yval))
+        # Assumes only one contour, doesn't support polygons with holes
+        return coordinates
 
 
 def get_adj_list_of_conservative_centroid_nodes(coords):
@@ -355,29 +340,20 @@ def get_adj_list_of_conservative_centroid_nodes(coords):
             if polys_share_edge(poly_list[i], poly_list[j]):
                 cent1 = sg.centroid(poly_list[i])
                 cent2 = sg.centroid(poly_list[j])
+                draw(sg.Segment2(cent1, cent2), color="red")
+                draw(cent1, color="red")
+                draw(cent2, color="red")
                 adjacency_list[(float(cent1.x()),float(cent1.y()))].append((float(cent2.x()),float(cent2.y()))) 
                 adjacency_list[(float(cent2.x()),float(cent2.y()))].append((float(cent1.x()),float(cent1.y()))) 
     return adjacency_list
 
 
 def main():   
-    # rooms environment
-    # coords = [(2,0),(2,4),(5,4),(5,3),(3,3),(3,1),(9,1),(9,3),(7,3),(8,4),(11,4),(11,6),(7,6),(7,7),(9,7),(9,9),(3,9),(3,7),(5,7),(5,6),(0,6),(0,0)]
-
-    # tetris environment
-    coords = [(0,12),(0,4),(12,4),(12,0),(16,0),(16,8),(4,8),(4,12)]
-
-    # coords =[(0,5),(0,1),(2,1),(2,0),(5,0),(7,2),(7,4),(9,2),(9,4),(10,3),(10,6),(6,7),(6,6),(5,6),(5,7),(4,7),(4,4),(5,4),(5,5),(6,5),(6,3),(3,3),
-    #             (3,7),(2,7),(2,8),(3,8),(3,9),(0,9),(0,8),(1,8),(1,7)]
-
-    # coords = [(0,0),(1,0),(1,1),(2,1),(2,0),(12,0),(12,5),(10,5),(10,2),(7,2),(7,3),(9,3),(9,6),(8,6),(8,4),(7,4),(7,6),(5,6),(5,2),(4,3),(4,7),(2,7),(2,2),(1,2),(1,3),(0,3)]
-
+    coords = coords_from_json("Envs/rooms3.json")
     env_poly = poly_from_coords(coords)
     draw(env_poly)
 
     adj_list = get_adj_list_of_conservative_centroid_nodes(coords)
-    for key in adj_list.keys():
-        print(key, "-->", adj_list[key])
     
     plt.show()
 
