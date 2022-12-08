@@ -163,5 +163,19 @@ def build_list_of_polygons_from_arrangement(arr):
 			poly_pts.append(circ.source().point())
 			polys.append(sg.Polygon(poly_pts))
 
-
 	return polys
+
+def get_tuple_from_polygon_set(poly_set):
+	'''Used to hash polysets'''
+	# Returns tuple of tuples with order guarenteed to be the same if same polygon_set is input
+	# Probably unneccsary to do a bunch of sorting if polygon_sets are alway returned as the same,
+	# but I don't want to deal with the issue where that isn't true
+	poly_set_list = []
+	for poly in poly_set.polygons:
+		single_poly = []
+		for coord in poly.outer_boundary().coords:
+			# print(type(coord))
+			single_poly.append((coord[0], coord[1]))
+		sorted_single_poly_tup = tuple(sorted(single_poly))
+		poly_set_list.append(sorted_single_poly_tup)
+	return tuple(sorted(poly_set_list))
