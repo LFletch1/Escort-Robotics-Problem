@@ -354,6 +354,7 @@ def main():
     draw(env_poly)
 
     adj_list = get_adj_list_of_conservative_centroid_nodes(coords)
+    print(adj_list.keys())
     # print(adj_list[63.75,65.0])
     # (43.333, 50.0),(60.0, 50.0),(60.0, 35.0),(60.0, 20.0),(60.0, 35.0),(60.0, 50.0),(63.75, 65.0),(68.333, 71.111),
     

@@ -203,8 +203,8 @@ class Environment:
     def draw_state(self, state):
         '''Draw the environment with the current state'''
         draw(self.gp)
-        draw(state.safezones, facecolor="green")
-        draw(state.contaminated_shadows, facecolor="red")
+        draw(state.safezones, facecolor="lightgreen")
+        draw(state.contaminated_shadows, facecolor="pink")
         draw(state.as_point(), color="blue")
         
     def env_res(self):

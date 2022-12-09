@@ -36,6 +36,7 @@ class EscortProblem:
 
     # BFS algorithm
     def bfs_safe_path(self): 
+        print("Searching for Safe Path")
         start_state = self.environment.get_starting_state(self.start_pos)
         visited = {}
         visited[start_state] = True
@@ -56,8 +57,9 @@ class EscortProblem:
                 end_state = current_state
                 break
 
-            # Prune this path if no safezones exists?
-            # elif not current_state.safezones:
+            # Prune this path if no safezones exists
+            elif not current_state.safezones:
+                continue
 
             # enqueue it
             for n_pos in current_state.neighbors_pos:
@@ -88,23 +90,29 @@ class EscortProblem:
         state = self.environment.get_starting_state(path[0]) 
         self.environment.draw_state(state)
         goal_point = sg.Point2(self.vip_goal_pos[0], self.vip_goal_pos[1])
-        draw(goal_point, color="yellow")
+        draw(goal_point, color="green")
         plt.show()
         for next_pos in path[1:]:
             plt.clf()
             state = self.environment.transition_blackbox(state, next_pos)
             self.environment.draw_state(state)
-            draw(goal_point, color="yellow")
+            draw(goal_point, color="green")
             plt.show()
             
         pass
 
 
 def main():
-    escort_prob = EscortProblem("Envs/tetris_env.json", (2,10.5), (12.5, 1))
-    escort_prob = EscortProblem("Envs/rooms.json", (10.0, 16.667), (100, 45))
+    # escort_prob = EscortProblem("Envs/tetris_env.json", (2,10.5), (12.5, 1))
+    # escort_prob = EscortProblem("Envs/tetris_env.json", (8.0, 6.0), (12.5, 1)) # No safe path exists
+    # escort_prob = EscortProblem("Envs/rooms.json", (10.0, 16.667), (100, 45))
+    # escort_prob = EscortProblem("Envs/rooms2.json", (2.333, 8.667), (8.5, 3))
+    escort_prob = EscortProblem("Envs/rooms3.json", (3.1, 5.3), (8.4, 5))
+    # escort_prob = EscortProblem("Envs/rooms4.json", (8.5, 1.5), (9, 9.5))
+    # print(escort_prob.coordinate_adj_list.keys())
     # Should be able to call path = escort_prob.bfs_safe_path() and will return a successful path
     path = escort_prob.bfs_safe_path()
+    print("Done")
     # print(path)
 
     # Tetris test path
@@ -114,9 +122,11 @@ def main():
     # escort_prob.coordinate_adj_list[(60.0, 66.667)] = []
     # escort_prob.environment.adj_list[(60.0, 66.667)] = []
     # path = [(10.0, 16.667), (6.667, 31.556), (6.667, 33.333), (7.5, 36.75),(16.667, 41.667),(30.0, 43.75),(43.333, 50.0),
-    #         (60.0, 50.0),(60.0, 35.0),(60.0, 20.0),(60.0, 35.0),(60.0, 50.0),(63.75, 65.0),(55.0, 66.667),(60.0, 66.667)] 
-
-    escort_prob.show_path(path)
+    #         (60.0, 50.0),(60.0, 35.0),(60.0, 20.0),(60.0, 35.0),(60.0, 50.0),(63.75, 65.0),(55.0, 66.667),(60.0, 66.667)]
+    if path != None:
+        escort_prob.show_path(path)
+    else:
+        print("No safe path exists")
 
 
 if __name__ == "__main__":
