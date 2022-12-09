@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 import math
 from scikit_utils import *
 
-# Notes: To access a segment's two points use seg.point(0) and seg.point(1)
-
 def poly_from_coords(coords):
     point2List = []
     for coord in coords:
@@ -355,8 +353,6 @@ def main():
 
     adj_list = get_adj_list_of_conservative_centroid_nodes(coords)
     print(adj_list.keys())
-    # print(adj_list[63.75,65.0])
-    # (43.333, 50.0),(60.0, 50.0),(60.0, 35.0),(60.0, 20.0),(60.0, 35.0),(60.0, 50.0),(63.75, 65.0),(68.333, 71.111),
     
     plt.show()
 

@@ -14,9 +14,6 @@ class State:
     def as_point(self):
         return sg.Point2(self.pos[0], self.pos[1])
 
-    def __eq__(self, __o: object) -> bool:
-        pass
-
     def __eq__(self, other):
         if type(self) != type(other):
             return False
@@ -31,12 +28,6 @@ class State:
         if self.pos[0] != other.pos[0] or self.pos[1] != other.pos[1]:
             return False
         return True
-
-        # shadows_diff = self.contaminated_shadows.difference(other.contaminated_shadows)
-
-        # return other and self.a == other.a and self.b == other.b
-    # def get_polygon_set_tuples(self):
-
 
     def __ne__(self, other):
         return not self.__eq__(other)

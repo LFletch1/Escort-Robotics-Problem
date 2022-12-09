@@ -5,6 +5,9 @@ Module with local helper functions for scikit-geometry.
 
 Authors: Nick Stiffler
 Version: June 14, 2022
+
+Modified by: Lance Fletcher
+Version: December 8, 2022
 """
 
 # import scikit-geometry modules
