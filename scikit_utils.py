@@ -5,11 +5,15 @@ Module with local helper functions for scikit-geometry.
 
 Authors: Nick Stiffler
 Version: June 14, 2022
+
+Modified by: Lance Fletcher
+Version: December 8, 2022
 """
 
 # import scikit-geometry modules
 import skgeom as sg
 import numpy as np
+from skgeom.draw import draw
 
 # ----------------------------
 # Monkey Patching
@@ -134,7 +138,47 @@ def build_polygon_set_from_arrangement(arr):
 				# Move circulator
 				circ = next(outer_ccb_circulator)
 			poly_pts.append(circ.source().point())
+			# p = sg.Polygon(poly_pts)
+			# print(p)
+			# draw(p)
 			polys.append(sg.Polygon(poly_pts))
 
-
 	return sg.PolygonSet(polys)
+
+
+def build_list_of_polygons_from_arrangement(arr):
+	polys = []
+	# iterate over all of the faces
+	for f in arr.faces:
+		if f.is_unbounded():
+			continue
+
+		# Info about the outer connect component boundary
+		if f.has_outer_ccb():
+			poly_pts = []
+			outer_ccb_circulator = f.outer_ccb
+			first = next(outer_ccb_circulator)
+			circ = next(outer_ccb_circulator)
+			while circ != first:
+				poly_pts.append(circ.source().point())
+				# Move circulator
+				circ = next(outer_ccb_circulator)
+			poly_pts.append(circ.source().point())
+			polys.append(sg.Polygon(poly_pts))
+
+	return polys
+
+def get_tuple_from_polygon_set(poly_set):
+	'''Used to hash polysets'''
+	# Returns tuple of tuples with order guarenteed to be the same if same polygon_set is input
+	# Probably unneccsary to do a bunch of sorting if polygon_sets are alway returned as the same,
+	# but I don't want to deal with the issue where that isn't true
+	poly_set_list = []
+	for poly in poly_set.polygons:
+		single_poly = []
+		for coord in poly.outer_boundary().coords:
+			# print(type(coord))
+			single_poly.append((coord[0], coord[1]))
+		sorted_single_poly_tup = tuple(sorted(single_poly))
+		poly_set_list.append(sorted_single_poly_tup)
+	return tuple(sorted(poly_set_list))
