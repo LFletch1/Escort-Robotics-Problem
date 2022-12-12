@@ -7,6 +7,7 @@ from collections import deque
 # from visibility import VisPoly
 from conservative_regions import get_adj_list_of_conservative_centroid_nodes, coords_from_json
 from Environment import *
+import time
 
 # Documentation and Demos used in this code:
 # https://matplotlib.org/stable/gallery/event_handling/coords_demo.html
@@ -40,7 +41,6 @@ class EscortProblem:
         visited = {}
         visited[start_state] = True
         queue = deque([start_state]) 
-        path = [] 
         end_state = None
         while queue:
             # Dequeue a vertex from queue
@@ -80,6 +80,7 @@ class EscortProblem:
         # Example: [(2,11), (1,9), (2,6), (8,6)]
         state = self.environment.get_starting_state(path[0]) 
         self.environment.draw_state(state)
+
         goal_point = sg.Point2(self.vip_goal_pos[0], self.vip_goal_pos[1])
         draw(goal_point, color="green")
         plt.show()
@@ -89,6 +90,8 @@ class EscortProblem:
             self.environment.draw_state(state)
             draw(goal_point, color="green")
             plt.show()
+        return state
+    
 
 
 def main():
@@ -97,14 +100,30 @@ def main():
     escort_prob = EscortProblem("Envs/rooms.json", (10.0, 16.667), (100, 45))
     # escort_prob = EscortProblem("Envs/rooms2.json", (2.333, 8.667), (8.5, 3))
     # escort_prob = EscortProblem("Envs/rooms3.json", (3.1, 5.3), (8.4, 5))
-    # escort_prob = EscortProblem("Envs/rooms4.json", (8.5, 1.5), (9, 9.5))
+    # escort_prob = EscortProblem("Envs/new_env.json", (1, 1.5), (3.4, 7.4))
+    # escort_prob = EscortProblem("Envs/new_env2.json", (1.5, 8.5), (7.5, 2.5))
+    # escort_prob = EscortProblem("Envs/new_env3.json", (9.667, 2.889), (2.5, 7.5))
+    t1 = time.time()
     path = escort_prob.bfs_safe_path()
-
+    t2 = time.time()
+    print(t2-t1, "seconds")
     if path != None:
         print("Path Found!")
-        escort_prob.show_path(path)
+        state = escort_prob.show_path(path)
     else:
         print("No safe path found :(")
+    escort_prob.environment.draw_state(state)
+
+    # i = 1
+    # while i < len(path):
+    #     prev_point = sg.Point2(path[i-1][0],path[i-1][1])
+    #     curr_point = sg.Point2(path[i][0],path[i][1])
+    #     draw(sg.Segment2(prev_point, curr_point), color="black")
+    #     i += 1
+    # draw(sg.Point2(path[0][0], path[0][1]), color="blue")
+    # draw(sg.Point2(path[-1][0], path[-1][1]), color="red")
+    # draw(sg.Point2(8.4, 5), color="green")
+    # plt.show()
 
 
 if __name__ == "__main__":
