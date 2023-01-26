@@ -1,1 +1,9 @@
 test*
+__pycache__/transition.cpython-39.pyc
+__pycache__/State.cpython-39.pyc
+__pycache__/EscortProblem.cpython-39.pyc
+__pycache__/Environment.cpython-39.pyc
+__pycache__/conservative_regions.cpython-39.pyc
+__pycache__/scikit_utils.cpython-39.pyc
+__pycache__/scikit_utils.cpython-39.pyc
+__pycache__/scikit_utils.cpython-39.pyc
