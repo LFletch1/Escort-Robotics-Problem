@@ -2,7 +2,7 @@
 from Environment import *
 from EscortProblem import *
 
-def get_grid_point(start_pos, interval, gp):
+def get_grid_point(start_pos, interval, gp, coords):
     # Plan:
     # get all neighbors of single point
     # check if they are within the enviornment, if not remove
@@ -16,10 +16,13 @@ def get_grid_point(start_pos, interval, gp):
                 ]
 
     for n in neighbors:
-        if not gp.contains(n):
+        if not gp.contains(n[0], n[1]):
             neighbors.remove(n)
+        else:
+            if n not in coords:
+                coords.append(n)
 
-    return neighbors
+    return coords
 
 def count_safe_zones(envstate):
     safezones = envstate.safezones
@@ -33,5 +36,18 @@ escort_prob = EscortProblem("Envs/rooms.json", (10.0, 16.667), (100, 45))
 
 state = escort_prob.environment.get_starting_state(escort_prob.start_pos)
 number = count_safe_zones(state)
+
+grid_points = [escort_prob.start_pos]
+
+for point in grid_points:
+    #grid_points = get_grid_point(escort_prob.start_pos, 1, escort_prob.environment.gp, grid_points)
+    grid_points = get_grid_point(point, 10, escort_prob.environment.gp, grid_points)
+    #print("Start Pos: ", escort_prob.start_pos)
+    #print("Neighbors:" , grid_points)
+
 escort_prob.environment.draw_state(state)
+for point in grid_points:
+    new_point = Point2(point[0], point[1])
+    draw(new_point, color = "black")
+
 plt.show()
