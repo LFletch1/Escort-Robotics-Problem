@@ -57,6 +57,7 @@ for point in grid_points:
 
 escort_prob.environment.draw_state(state)
 for point in grid_points:
+    new_state = escort_prob.environment.get_starting_state(point)
     new_point = Point2(point[0], point[1])
     draw(new_point, color = "black")
 
