@@ -2,7 +2,7 @@
 from Environment import *
 from EscortProblem import *
 
-def get_grid_point(start_pos, interval, gp, coords):
+def get_grid_point(start_pos, interval, gp, coords, halves):
     # Plan:
     # get all neighbors of single point
     # check if they are within the enviornment, if not remove
@@ -16,11 +16,19 @@ def get_grid_point(start_pos, interval, gp, coords):
                 ]
 
     for n in neighbors:
+        temp_point = Point2(n[0], n[1])
         if not gp.contains(n[0], n[1]):
             neighbors.remove(n)
+        
         else:
-            if n not in coords:
-                coords.append(n)
+            if isinstance(halves.find(temp_point), sg.arrangement.Vertex) or isinstance(halves.find(temp_point), sg.arrangement.Halfedge):
+                print("Outer")
+            else:
+                if n not in coords:
+                    coords.append(n)
+            #else:
+            #    print("Duplicate")
+        
 
     return coords
 
@@ -41,9 +49,11 @@ grid_points = [escort_prob.start_pos]
 
 for point in grid_points:
     #grid_points = get_grid_point(escort_prob.start_pos, 1, escort_prob.environment.gp, grid_points)
-    grid_points = get_grid_point(point, 10, escort_prob.environment.gp, grid_points)
+    grid_points = get_grid_point(point, 5, escort_prob.environment.gp, grid_points, escort_prob.environment.arran)
     #print("Start Pos: ", escort_prob.start_pos)
     #print("Neighbors:" , grid_points)
+
+
 
 escort_prob.environment.draw_state(state)
 for point in grid_points:
