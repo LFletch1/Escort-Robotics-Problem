@@ -18,23 +18,10 @@ class VisPoly:
         self.line = line
         self.halves = halve
         self.arran = gp.arrangement
-<<<<<<< HEAD
         self.full_polyset = self.remove_holes()
         #self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
         self.cid = line.figure.canvas.mpl_connect('motion_notify_event', self)
         self.env_res()
-=======
-        self.full_polyset = build_polygon_set_from_arrangement(gp.arrangement)
-        self.cid = line.figure.canvas.mpl_connect('button_press_event', self.click_handle)
-        self.cid = line.figure.canvas.mpl_connect('key_press_event', self.key_handle)
-        self.shadow_polyset = PolygonSet()
-        self.unsafe_polyset = PolygonSet()
-        self.shadows = {}
-        self.safe_zones = {}
-        self.interval = interval
-        self(( int(line.get_xdata() ) , int (line.get_ydata()) ))
-        # self(( 5 , 5 ))
->>>>>>> lance_new
 
     # ---------------------------------
     # state is represented by:
@@ -204,7 +191,6 @@ class VisPoly:
             visibile_edges = np.append(visibile_edges, vs_current)
 
         return visibile_edges
-<<<<<<< HEAD
         
 
     def compute_visib_pursue(self):
@@ -227,8 +213,6 @@ class VisPoly:
             #    draw(j.curve(), color='black', visible_point = False)
         return vs_p, unsafe_zones
 
-=======
->>>>>>> lance_new
 
     def compute_shadow_vis(self, shadow_vis_edges):
         self.unsafe_polyset = PolygonSet()
