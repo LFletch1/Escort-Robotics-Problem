@@ -154,13 +154,17 @@ class Environment:
 
         return new_state
 
-    def get_starting_state(self, pos):
+    def get_starting_state(self, pos, has_adj_list=True):
         '''Return starting state, every shadow is contaminated'''
         p = sg.Point2(pos[0], pos[1])
         v_poly = self.compute_visib_pursue(p)
         start_shadows = self.compute_shadows(v_poly)
         start_safezones = self.compute_safezones(p)
-        return State(pos, parent=None, contaminated_shadows=start_shadows, safezones=start_safezones, neighbors=self.adj_list[pos])
+        if has_adj_list:
+            return State(pos, parent=None, contaminated_shadows=start_shadows, safezones=start_safezones, neighbors=self.adj_list[pos])
+        else:
+            return State(pos, parent=None, contaminated_shadows=start_shadows, safezones=start_safezones, neighbors=[])
+            
 
     def draw_state(self, state):
         '''Draw the environment based on the state argument'''
