@@ -57,8 +57,26 @@ for point in grid_points:
 
 escort_prob.environment.draw_state(state)
 for point in grid_points:
-    new_state = escort_prob.environment.get_starting_state(point)
-    new_point = Point2(point[0], point[1])
-    draw(new_point, color = "black")
+    try: 
+        #escort_prob = EscortProblem("Envs/rooms.json", point, (100, 45))
+        state = escort_prob.environment.get_starting_state(point)
+        number = count_safe_zones(state)
+        new_point = Point2(point[0], point[1])
+        if number == 0:
+            draw(new_point, color = "black")
+        elif number == 1:
+            draw(new_point, color = "lightpink")
+        elif number == 2:
+            draw(new_point, color = "lightgreen")
+        elif number == 3:
+            draw(new_point, color = "lightblue")
+        elif number == 4:
+            draw(new_point, color = "lightpurple")
+        else:
+            print("More safe zones!")
+    except:
+        print("Key Error -- Happened")
+    
+    
 
 plt.show()
