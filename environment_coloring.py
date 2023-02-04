@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import skgeom as sg
 from skgeom.draw import draw
 import numpy as np
-
+from conservative_regions import *
+from lines import *
 
 def main():
     
@@ -33,6 +34,15 @@ def main():
                     print(f"Bad coord ({x_coord},{y_coord})")
             except:
                 print("BUG")
+
+    
+    coords = coords_from_json("Envs/rooms.json")
+    env_poly = poly_from_coords(coords)
+    env_segments = get_segments_from_coords(coords)
+    cons_edges, opp_edges = get_env_conservative_edges(env_segments, env_poly)
+    draw(cons_edges, color= "black")
+    draw(opp_edges, color = "black")
+
     plt.show()
     
 
