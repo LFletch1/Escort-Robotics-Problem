@@ -20,9 +20,9 @@ class VisPoly:
         self.full_polyset = build_polygon_set_from_arrangement(gp.arrangement)
         self.cid = line.figure.canvas.mpl_connect('button_press_event', self.click_handle)
         self.cid = line.figure.canvas.mpl_connect('key_press_event', self.key_handle)
-        self.shadow_polyset = PolygonSet()
-        self.unsafe_polyset = PolygonSet()
-        self.safe_polyset = PolygonSet()
+        self.shadow_polyset = sg.PolygonSet()
+        self.unsafe_polyset = sg.PolygonSet()
+        self.safe_polyset = sg.PolygonSet()
         self.shadows = {}
         self.safe_zones = {}
         self.interval = interval
@@ -152,10 +152,48 @@ class VisPoly:
             self.line.figure.canvas.draw()
         print ( "There are" , len(self.shadows), "shadows.")
         print ( "There are" , len(self.safe_zones), "safezones.")
+        plt.savefig("shadows/current_state.png")
+        # added for demo
+        num = 0
+        #for shadow in self.shadows:
+            #fig1, ax1 = plt.subplots()
+            #self.env_res()
+            #draw(shadow, facecolor = "lightpink")
+            #plt.savefig("shadows/" + str(num) + "_shadow.png")
+
+        self.env_res()
+        p = sg.Point2(self.xs, self.ys)
+        vs = sg.RotationalSweepVisibility(self.arran)
+        for j in vis_p.halfedges:
+            # if segment is occlusion ray
+            if ( self.is_occlusion_ray(j,p) ): 
+                draw(j.curve(), color='red', visible_point = False)
+                #unsafe = self.compute_unsafe_zone(j, vs)
+                #unsafe_zones = np.append(unsafe_zones, unsafe)
+                pt1 = np.array( (j.curve()[0].x(), j.curve()[0].y()) )
+                pt2 = np.array( (j.curve()[1].x(), j.curve()[1].y()) )
+                # replace 10 with number proportional to length of segment using np.linalg.norm
+                points = np.linspace( pt1, pt2 , 10)[1:-1]
+                visibile_edges = np.array([])
+                for point in points:
+                    current_point = sg.Point2(point[0], point[1])
+                    current_face = arr.find(current_point)
+                    vs_current = vs.compute_visibility(current_point, current_face)
+                    visibile_edges = np.append(visibile_edges, vs_current)
+                
+                for edge in visibile_edges:
+                    for half in edge.halfedges:
+                        draw(half.curve(), color = "lightgreen")
+
+                plt.savefig("shadows/" + str(num) + "_shadow_vis.png")
+                self.env_res()
+            #else:
+                #draw(j.curve(), color='black', visible_point = False)
+            num += 1
 
     def env_res(self):
         plt.cla()
-        ax.set_title('click to build line segments')
+        #ax.set_title('click to build line segments')
         for ha in self.arran.halfedges:
             draw(ha.curve())
         plt.plot(self.xs, self.ys, '.')
@@ -172,10 +210,10 @@ class VisPoly:
     # ---------------------------------
     def is_occlusion_ray(self,j,p):
         # Creates segment and sees if it overlaps
-        seg = Segment2(j.source().point(), j.target().point())
+        seg = sg.Segment2(j.source().point(), j.target().point())
 
         for edge in self.halves:
-            if isinstance(intersection(seg, edge), Segment2):
+            if isinstance(sg.intersection(seg, edge), sg.Segment2):
                 return False
         return True
 
@@ -184,15 +222,15 @@ class VisPoly:
     # returns visibility region of pursuer AND shadows
     # ---------------------------------
     def compute_visib_pursue(self):
-        vs = RotationalSweepVisibility(self.arran)
-        p = Point2(self.xs, self.ys)
+        vs = sg.RotationalSweepVisibility(self.arran)
+        p = sg.Point2(self.xs, self.ys)
         face_p = arr.find(p)
         vis_p = vs.compute_visibility(p, face_p)
         unsafe_zones = np.array([])
 
         for j in vis_p.halfedges:
             # if segment is occlusion ray
-            if ( self.is_occlusion_ray(j,p) ): 
+            if (self.is_occlusion_ray(j,p) ): 
                 draw(j.curve(), color='red', visible_point = False)
                 unsafe = self.compute_unsafe_zone(j, vs)
                 unsafe_zones = np.append(unsafe_zones, unsafe)
@@ -212,7 +250,7 @@ class VisPoly:
         points = np.linspace( pt1, pt2 , 10)[1:-1]
         visibile_edges = np.array([])
         for point in points:
-            current_point = Point2(point[0], point[1])
+            current_point = sg.Point2(point[0], point[1])
             current_face = arr.find(current_point)
             vs_current = visibility.compute_visibility(current_point, current_face)
             visibile_edges = np.append(visibile_edges, vs_current)
@@ -220,7 +258,7 @@ class VisPoly:
         return visibile_edges
 
     def compute_shadow_vis(self, shadow_vis_edges):
-        self.unsafe_polyset = PolygonSet()
+        self.unsafe_polyset = sg.PolygonSet()
         for vis in shadow_vis_edges:
             polyset = build_polygon_set_from_arrangement(vis)
             self.unsafe_polyset = self.unsafe_polyset.union(polyset)
@@ -228,7 +266,8 @@ class VisPoly:
         # contaminated shadows
         for poly in self.unsafe_polyset.polygons:
             draw(poly, facecolor = "orange")
-
+        
+            
     def compute_shadows(self, visible_arr):
         # update shadow polyset
         # is difference between full polyset and visible region
@@ -245,7 +284,7 @@ class VisPoly:
         # update shadow polyset
         # is difference between full polyset and visible region
         # x_polyset = build_polygon_set_from_arrangement(visible_arr)
-        self.safe_polyset = Polygon()
+        self.safe_polyset = sg.Polygon()
         self.safe_polyset = self.full_polyset.difference(self.shadow_polyset)
         self.safe_polyset = self.safe_polyset.difference(self.unsafe_polyset)
         self.safe_zones.clear()
@@ -263,9 +302,11 @@ if __name__ == '__main__':
 
     np_half = np.array([])
 
+
+
     # Draw the arrangement
     for he in gp.arrangement.halfedges:
-        np_half = np.append(np_half, Segment2(he.source().point(), he.target().point()))
+        np_half = np.append(np_half, sg.Segment2(he.source().point(), he.target().point()))
         draw(he.curve(), visible_point=False)
         
     arr = gp.arrangement
@@ -275,5 +316,9 @@ if __name__ == '__main__':
 
     line, = ax.plot(starting_pos[0], starting_pos[1])  # empty line
     vis_poly = VisPoly(line, gp, np_half, interval)
+
+
+    
+    
 
     plt.show()
