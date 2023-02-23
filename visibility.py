@@ -153,7 +153,7 @@ class VisPoly:
         print ( "There are" , len(self.shadows), "shadows.")
         print ( "There are" , len(self.safe_zones), "safezones.")
         plt.savefig("shadows/current_state.png")
-        # added for demo
+        # added for demo -------------------
         num = 0
         #for shadow in self.shadows:
             #fig1, ax1 = plt.subplots()
@@ -173,7 +173,8 @@ class VisPoly:
                 pt1 = np.array( (j.curve()[0].x(), j.curve()[0].y()) )
                 pt2 = np.array( (j.curve()[1].x(), j.curve()[1].y()) )
                 # replace 10 with number proportional to length of segment using np.linalg.norm
-                points = np.linspace( pt1, pt2 , 10)[1:-1]
+                #points = np.linspace( pt1, pt2 , 10)[1:-1]
+                points = np.linspace(pt1,pt2, 30)[1:-1]
                 visibile_edges = np.array([])
                 for point in points:
                     current_point = sg.Point2(point[0], point[1])
@@ -247,7 +248,7 @@ class VisPoly:
         pt1 = np.array( (j.curve()[0].x(), j.curve()[0].y()) )
         pt2 = np.array( (j.curve()[1].x(), j.curve()[1].y()) )
         # replace 10 with number proportional to length of segment using np.linalg.norm
-        points = np.linspace( pt1, pt2 , 10)[1:-1]
+        points = np.linspace( pt1, pt2 , 30)[1:-1]
         visibile_edges = np.array([])
         for point in points:
             current_point = sg.Point2(point[0], point[1])
@@ -297,7 +298,7 @@ class VisPoly:
 if __name__ == '__main__':
     fig, ax = plt.subplots()
 
-    gp = GeneralPolygon.load_from_json("Envs/rooms.json", verbose=True)
+    gp = GeneralPolygon.load_from_json("Envs/rooms copy 3.json", verbose=True)
     gp.build_arrangement(verbose=True)
 
     np_half = np.array([])
