@@ -330,7 +330,6 @@ def get_env_conservative_edges(env_segments, env_polygon):
                                     target_point = r
                     if target_point:
                         new = sg.Segment2(closest_point2, target_point)
-                        print(new)
                         conservative_region_edges.append(new)
 
     # Some duplicates may have been created along the way. Remove them
