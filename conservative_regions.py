@@ -51,6 +51,83 @@ def get_shared_point(seg1, seg2):
     else:
         return None
 
+def get_slope(point1, point2):
+    if (point2.x() - point1.x()) == 0:
+        return None
+    # return ((point2.y() - point1.y()) / (point2.x() - point1.x()))
+    dy = point2.y() - point1.y()
+    dx = point2.x() - point1.x()
+    # return dy, dx # Return it in change in y and change in x form
+    return dy / dx
+
+def true_ray_shooting_vertices(point1, point2, env_polygon_set): # Used to make sure to not shoot rays between vertices who aren't pairs
+    m = get_slope(point1, point2)
+    if not m:
+        # line is vertical, need to extend y directions only
+        # FOR NOW RETURN TRUE
+        return True
+    if point1.x() > point2.x(): # extend point 1 to the right and point 2 to the left
+        ext1_x = point1.x() + 0.1 
+        ext1_y = m * (0.1) + point1.y()
+        ext2_x = point2.x() - 0.1 
+        ext2_y = m * (-0.1) + point2.y()
+
+        extended_point1 = sg.Point2(ext1_x, ext1_y)
+        extended_point2 = sg.Point2(ext2_x, ext2_y)
+        # draw(extended_point1, color="orange")
+        # draw(extended_point2, color="orange")
+        if not env_polygon_set.locate(extended_point1) or not env_polygon_set.locate(extended_point2):
+            return False
+        else:
+            return True
+        
+    elif point1.x() < point2.x(): # extend point 1 to the left and point 2 to the rig
+        ext1_x = point1.x() - 0.1 
+        ext1_y = m * (-0.1) + point1.y()
+        ext2_x = point2.x() + 0.1 
+        ext2_y = m * (0.1) + point2.y()
+        extended_point1 = sg.Point2(ext1_x, ext1_y)
+        extended_point2 = sg.Point2(ext2_x, ext2_y)
+        # draw(extended_point1, color="orange")
+        # draw(extended_point2, color="orange")
+        if not env_polygon_set.locate(extended_point1) or not env_polygon_set.locate(extended_point2):
+            return False
+        else:
+            return True
+    
+    else: # They are equal 
+        pass # should be handled by if not m conditional statment 
+
+def true_ray_shoot_single_point(point, target, env_polygon_set): # Used to make sure to not shoot rays between vertices who aren't pairs
+    # check if ray shot from point to target is a true ray shooting vertex at point 1
+    m = get_slope(point, target)
+    if not m:
+        # line is vertical, need to extend y directions only
+        # FOR NOW RETURN TRUE
+        return True
+    if point.x() > target.x(): # extend target to left
+        t_x = target.x() - 0.1 
+        t_y = m * (-0.1) + target.y()
+
+        target_extension = sg.Point2(t_x, t_y)
+        if not env_polygon_set.locate(target_extension):
+            return False
+        else:
+            return True
+        
+    elif point.x() < target.x(): # extend target right
+        t_x = target.x() + 0.1 
+        t_y = m * (0.1) + target.y()
+
+        target_extension = sg.Point2(t_x, t_y)
+        if not env_polygon_set.locate(target_extension):
+            return False
+        else:
+            return True
+    
+    else: # They are equal 
+        pass # should be handled by if not m conditional statment 
+
 
 def reflex_angle_point(seg1, seg2, polygon_set):
     share_point = get_shared_point(seg1, seg2)
@@ -248,25 +325,27 @@ def get_env_conservative_edges(env_segments, env_polygon):
         for k in range(j+1, len(reflex_points)):
             reflex1 = reflex_points[j]
             reflex2 = reflex_points[k]
-            reflex_line = sg.Segment2(reflex1, reflex2)
-            no_intersections = True
-            for seg in env_segments:
-                intersect = sg.intersection(reflex_line, seg)
-                
-                if isinstance(intersect, sg.Segment2):
-                    no_intersections = False
-                    break
+            if true_ray_shooting_vertices(reflex1, reflex2, env_polygon_set):
+                reflex_line = sg.Segment2(reflex1, reflex2)
+                # draw(reflex_line, color='green')
+                no_intersections = True
+                for seg in env_segments:
+                    intersect = sg.intersection(reflex_line, seg)
                     
-                m_p = midpoint(reflex_line)
-                if isinstance(intersect, sg.Point2):
-                    if intersect != seg.point(0) and intersect != seg.point(1):
+                    if isinstance(intersect, sg.Segment2):
                         no_intersections = False
                         break
-                    if not env_polygon_set.locate(m_p):
-                        no_intersections = False
-                        break
-            if no_intersections:
-                lines_of_sight_reflex_points.append(reflex_line)
+                        
+                    m_p = midpoint(reflex_line)
+                    if isinstance(intersect, sg.Point2):
+                        if intersect != seg.point(0) and intersect != seg.point(1):
+                            no_intersections = False
+                            break
+                        if not env_polygon_set.locate(m_p):
+                            no_intersections = False
+                            break
+                if no_intersections:
+                    lines_of_sight_reflex_points.append(reflex_line)
 
     for seg in lines_of_sight_reflex_points:
         conservative_region_edges.append(seg) # NEW Line that doesn't exist in pursuit-evasion problem, but does in escort problem
@@ -300,12 +379,13 @@ def get_env_conservative_edges(env_segments, env_polygon):
                     for r in reflex_points:
                         if r == seg.point(0) or r == seg.point(1):
                             continue
-                        if no_segments_between_points(r, closest_point1, env_segments, env_polygon_set):
-                            similarity = cosine_dist([float(seg.point(0).x()) - float(closest_point1.x()), float(seg.point(0).y()) - float(closest_point1.y())], [float(r.x()) - float(closest_point1.x()), float(r.y()) - float(closest_point1.x())])
-                            if not isnan(similarity):
-                                if similarity > closest:
-                                    closest = similarity
-                                    target_point = r
+                        if true_ray_shoot_single_point(closest_point1, r, env_polygon_set):
+                            if no_segments_between_points(r, closest_point1, env_segments, env_polygon_set):
+                                similarity = cosine_dist([float(seg.point(0).x()) - float(closest_point1.x()), float(seg.point(0).y()) - float(closest_point1.y())], [float(r.x()) - float(closest_point1.x()), float(r.y()) - float(closest_point1.x())])
+                                if not isnan(similarity):
+                                    if similarity > closest:
+                                        closest = similarity
+                                        target_point = r
                     if target_point:
                         new = sg.Segment2(closest_point1, target_point)
                         conservative_region_edges.append(new)
@@ -322,12 +402,13 @@ def get_env_conservative_edges(env_segments, env_polygon):
                     for r in reflex_points:
                         if r == seg.point(0) or r == seg.point(1):
                             continue
-                        if no_segments_between_points(r, closest_point2, env_segments, env_polygon_set):
-                            similarity = cosine_dist([float(seg.point(1).x()) - float(closest_point2.x()), float(seg.point(1).y()) - float(closest_point2.y())], [float(r.x()) - float(closest_point2.x()), float(r.y()) - float(closest_point2.x())])
-                            if not isnan(similarity):
-                                if similarity > closest:
-                                    closest = similarity
-                                    target_point = r
+                        if true_ray_shoot_single_point(closest_point2, r, env_polygon_set):
+                            if no_segments_between_points(r, closest_point2, env_segments, env_polygon_set):
+                                similarity = cosine_dist([float(seg.point(1).x()) - float(closest_point2.x()), float(seg.point(1).y()) - float(closest_point2.y())], [float(r.x()) - float(closest_point2.x()), float(r.y()) - float(closest_point2.x())])
+                                if not isnan(similarity):
+                                    if similarity > closest:
+                                        closest = similarity
+                                        target_point = r
                     if target_point:
                         new = sg.Segment2(closest_point2, target_point)
                         conservative_region_edges.append(new)
@@ -383,7 +464,7 @@ def get_adj_list_of_conservative_centroid_nodes(coords):
     for seg in env_segments:
         arr.insert(seg)
     for edge in cons_edges:
-        draw(edge, color="blue")
+        # draw(edge, color="blue")
         arr.insert(edge)
 
     poly_list = build_list_of_polygons_from_arrangement(arr)
@@ -397,7 +478,7 @@ def get_adj_list_of_conservative_centroid_nodes(coords):
             if polys_share_edge(poly_list[i], poly_list[j]):
                 cent1 = sg.centroid(poly_list[i])
                 cent2 = sg.centroid(poly_list[j])
-                draw(sg.Segment2(cent1, cent2), color="red")
+                # draw(sg.Segment2(cent1, cent2), color="red")
                 # draw(cent1, color="red")
                 # draw(cent2, color="red")
                 adjacency_list[(round(float(cent1.x()),3), round(float(cent1.y()),3))].append((round(float(cent2.x()),3), round(float(cent2.y()),3))) 
@@ -406,13 +487,14 @@ def get_adj_list_of_conservative_centroid_nodes(coords):
 
 
 def main():   
-    coords = coords_from_json("Envs/rooms.json")
+    coords = coords_from_json("Envs/rooms3.json")
     # print(coords)
     env_poly = poly_from_coords(coords)
     draw(env_poly)
 
     adj_list = get_adj_list_of_conservative_centroid_nodes(coords)
-    # print(adj_list.keys())
+    print(adj_list.keys())
+    print(len(adj_list.keys()))
     
     plt.show()
 

@@ -83,13 +83,13 @@ class EscortProblem:
 
         goal_point = sg.Point2(self.vip_goal_pos[0], self.vip_goal_pos[1])
         draw(goal_point, color="green")
-        plt.show()
+        # plt.show()
         for next_pos in path[1:]:
             plt.clf()
             state = self.environment.transition_blackbox(state, next_pos)
-            self.environment.draw_state(state)
+            # self.environment.draw_state(state)
             draw(goal_point, color="green")
-            plt.show()
+            # plt.show()
         return state
     
 
@@ -97,8 +97,9 @@ class EscortProblem:
 def main():
     # escort_prob = EscortProblem("Envs/tetris_env.json", (2,10.5), (12.5, 1))
     # escort_prob = EscortProblem("Envs/tetris_env.json", (8.0, 6.0), (12.5, 1)) # No safe path exists
-    escort_prob = EscortProblem("Envs/rooms.json", (10.0, 16.667), (100, 45))
-    # escort_prob = EscortProblem("Envs/rooms2.json", (2.333, 8.667), (8.5, 3))
+    # escort_prob = EscortProblem("Envs/rooms.json", (1, 1.667), (10, 4.5))
+    # escort_prob = EscortProblem("Envs/rooms.json", (1, 1.667), (1.5, 3))
+    escort_prob = EscortProblem("Envs/rooms2.json", (2.5, 8.5), (8.5, 3))
     # escort_prob = EscortProblem("Envs/rooms3.json", (3.1, 5.3), (8.4, 5))
     # escort_prob = EscortProblem("Envs/new_env.json", (1, 1.5), (3.4, 7.4))
     # escort_prob = EscortProblem("Envs/new_env2.json", (1.5, 8.5), (7.5, 2.5))
@@ -114,16 +115,16 @@ def main():
         print("No safe path found :(")
     escort_prob.environment.draw_state(state)
 
-    # i = 1
-    # while i < len(path):
-    #     prev_point = sg.Point2(path[i-1][0],path[i-1][1])
-    #     curr_point = sg.Point2(path[i][0],path[i][1])
-    #     draw(sg.Segment2(prev_point, curr_point), color="black")
-    #     i += 1
-    # draw(sg.Point2(path[0][0], path[0][1]), color="blue")
-    # draw(sg.Point2(path[-1][0], path[-1][1]), color="red")
-    # draw(sg.Point2(8.4, 5), color="green")
-    # plt.show()
+    i = 1
+    while i < len(path):
+        prev_point = sg.Point2(path[i-1][0],path[i-1][1])
+        curr_point = sg.Point2(path[i][0],path[i][1])
+        draw(sg.Segment2(prev_point, curr_point), color="black")
+        i += 1
+    draw(sg.Point2(path[0][0], path[0][1]), color="blue")
+    draw(sg.Point2(path[-1][0], path[-1][1]), color="red")
+    draw(sg.Point2(8.5, 3), color="green")
+    plt.savefig("rooms2_solution.png")
 
 
 if __name__ == "__main__":
