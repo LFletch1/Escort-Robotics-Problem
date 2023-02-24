@@ -4,6 +4,14 @@ from skgeom.draw import draw
 import matplotlib.pyplot as plt
 import math
 from scikit_utils import *
+from numpy import dot, isnan
+from numpy.linalg import norm
+
+
+def cosine_dist(a, b):
+    cos_sim = dot(a, b)/(norm(a)*norm(b))
+    return cos_sim
+
 
 def poly_from_coords(coords):
     point2List = []
@@ -88,7 +96,6 @@ def get_environment_reflex_points(segments, env_polygon):
     last_point = reflex_angle_point(segments[0], segments[-1], polygon_set)
     if last_point:
         reflex_angle_points.append(last_point) 
-
     return reflex_angle_points
 
 
@@ -135,6 +142,28 @@ def equal_segments(seg1, seg2):
     elif seg1.point(0) == seg2.point(1) and seg1.point(1) == seg2.point(0):
         return True
     return False
+
+def no_segments_between_points(point1, point2, segments, env_polygon_set):
+    line = sg.Segment2(point1, point2)
+    no_intersections = True
+    for seg in segments:
+        intersect = sg.intersection(line, seg)
+                
+        if isinstance(intersect, sg.Segment2):
+            no_intersections = False
+            break
+            
+        m_p = midpoint(line)
+        if isinstance(intersect, sg.Point2):
+            if intersect != line.point(0) and intersect != line.point(1):
+                no_intersections = False
+                break
+            if not env_polygon_set.locate(m_p):
+                no_intersections = False
+                break
+
+    return no_intersections
+
 
 
 def get_env_conservative_edges(env_segments, env_polygon):
@@ -213,7 +242,7 @@ def get_env_conservative_edges(env_segments, env_polygon):
                 conservative_edge = sg.Segment2(closest_point1, r_point)
                 conservative_region_edges.append(conservative_edge)
 
-    # Draw outward rays from reflex points that have are in the line of sight of each other
+    # Draw outward rays from reflex points that are in the line of sight of each other
     lines_of_sight_reflex_points = []
     for j in range(len(reflex_points)):
         for k in range(j+1, len(reflex_points)):
@@ -223,6 +252,7 @@ def get_env_conservative_edges(env_segments, env_polygon):
             no_intersections = True
             for seg in env_segments:
                 intersect = sg.intersection(reflex_line, seg)
+                
                 if isinstance(intersect, sg.Segment2):
                     no_intersections = False
                     break
@@ -232,14 +262,14 @@ def get_env_conservative_edges(env_segments, env_polygon):
                     if intersect != seg.point(0) and intersect != seg.point(1):
                         no_intersections = False
                         break
-                    elif not env_polygon_set.locate(m_p):
+                    if not env_polygon_set.locate(m_p):
                         no_intersections = False
                         break
-
             if no_intersections:
                 lines_of_sight_reflex_points.append(reflex_line)
 
     for seg in lines_of_sight_reflex_points:
+        conservative_region_edges.append(seg) # NEW Line that doesn't exist in pursuit-evasion problem, but does in escort problem
         vec1 = seg.point(0) - seg.point(1) # Vector in direction from point 1 to point 2
         vec2 = seg.point(1) - seg.point(0) # Vector Ray in direction of from point 2 to point 1
         ray1 = sg.Ray2(seg.point(0), vec1) # Ray starting at point 1
@@ -265,6 +295,20 @@ def get_env_conservative_edges(env_segments, env_polygon):
                 m_p = midpoint(conservative_edge)
                 if env_polygon_set.locate(m_p):
                     conservative_region_edges.append(conservative_edge)
+                    closest = -100
+                    target_point = None
+                    for r in reflex_points:
+                        if r == seg.point(0) or r == seg.point(1):
+                            continue
+                        if no_segments_between_points(r, closest_point1, env_segments, env_polygon_set):
+                            similarity = cosine_dist([float(seg.point(0).x()) - float(closest_point1.x()), float(seg.point(0).y()) - float(closest_point1.y())], [float(r.x()) - float(closest_point1.x()), float(r.y()) - float(closest_point1.x())])
+                            if not isnan(similarity):
+                                if similarity > closest:
+                                    closest = similarity
+                                    target_point = r
+                    if target_point:
+                        new = sg.Segment2(closest_point1, target_point)
+                        conservative_region_edges.append(new)
 
         if len(intersecting2_points):
             closest_point2 = closest_point(seg.point(1), intersecting2_points)
@@ -273,13 +317,29 @@ def get_env_conservative_edges(env_segments, env_polygon):
                 m_p = midpoint(conservative_edge)
                 if env_polygon_set.locate(m_p):
                     conservative_region_edges.append(conservative_edge)
+                    closest = -100
+                    target_point = None
+                    for r in reflex_points:
+                        if r == seg.point(0) or r == seg.point(1):
+                            continue
+                        if no_segments_between_points(r, closest_point2, env_segments, env_polygon_set):
+                            similarity = cosine_dist([float(seg.point(1).x()) - float(closest_point2.x()), float(seg.point(1).y()) - float(closest_point2.y())], [float(r.x()) - float(closest_point2.x()), float(r.y()) - float(closest_point2.x())])
+                            if not isnan(similarity):
+                                if similarity > closest:
+                                    closest = similarity
+                                    target_point = r
+                    if target_point:
+                        new = sg.Segment2(closest_point2, target_point)
+                        print(new)
+                        conservative_region_edges.append(new)
 
     # Some duplicates may have been created along the way. Remove them
     duplicate_indices = []
     for i in range(len(conservative_region_edges)):
         for j in range(i+1, len(conservative_region_edges)):
             if equal_segments(conservative_region_edges[i], conservative_region_edges[j]):
-                duplicate_indices.append(j)
+                if j not in duplicate_indices:
+                    duplicate_indices.append(j)
     duplicate_indices.sort(reverse=True)
     for idx in duplicate_indices:
         conservative_region_edges.pop(idx)
@@ -324,7 +384,7 @@ def get_adj_list_of_conservative_centroid_nodes(coords):
     for seg in env_segments:
         arr.insert(seg)
     for edge in cons_edges:
-        # draw(edge, color="blue")
+        draw(edge, color="blue")
         arr.insert(edge)
 
     poly_list = build_list_of_polygons_from_arrangement(arr)
@@ -347,13 +407,13 @@ def get_adj_list_of_conservative_centroid_nodes(coords):
 
 
 def main():   
-    coords = coords_from_json("Envs/new_env3.json")
-    print(coords)
+    coords = coords_from_json("Envs/rooms.json")
+    # print(coords)
     env_poly = poly_from_coords(coords)
     draw(env_poly)
 
     adj_list = get_adj_list_of_conservative_centroid_nodes(coords)
-    print(adj_list.keys())
+    # print(adj_list.keys())
     
     plt.show()
 
