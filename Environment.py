@@ -79,7 +79,7 @@ class Environment:
         pt1 = np.array( (j.curve()[0].x(), j.curve()[0].y()) )
         pt2 = np.array( (j.curve()[1].x(), j.curve()[1].y()) )
         # replace 10 with number proportional to length of segment using np.linalg.norm
-        points = np.linspace( pt1, pt2 , 10)[1:-1]
+        points = np.linspace( pt1, pt2 , 30)[1:-1]
 
 
         visibile_edges = np.array([])
