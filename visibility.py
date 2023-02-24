@@ -298,7 +298,7 @@ class VisPoly:
 if __name__ == '__main__':
     fig, ax = plt.subplots()
 
-    gp = GeneralPolygon.load_from_json("Envs/rooms copy 3.json", verbose=True)
+    gp = GeneralPolygon.load_from_json("Envs/slim_hallway.json", verbose=True)
     gp.build_arrangement(verbose=True)
 
     np_half = np.array([])
@@ -313,7 +313,7 @@ if __name__ == '__main__':
     arr = gp.arrangement
 
     interval = 5
-    starting_pos = (5,5)
+    starting_pos = (1,4.1)
 
     line, = ax.plot(starting_pos[0], starting_pos[1])  # empty line
     vis_poly = VisPoly(line, gp, np_half, interval)
