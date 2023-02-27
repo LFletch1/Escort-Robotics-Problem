@@ -455,18 +455,29 @@ def coords_from_json(file_path):
         # Assumes only one contour, doesn't support polygons with holes
         return coordinates
 
+def segment_outside_polygon(seg, polygon_set):
+    mp1 = midpoint(seg)
+    if polygon_set.locate(mp1):
+        m2 = midpoint(sg.Segment2(seg.point(0), mp1))
+        m3 = midpoint(sg.Segment2(seg.point(1), mp1))
+        if polygon_set.locate(m2) and polygon_set.locate(m3):
+            return True
+    return False
+
 
 def get_adj_list_of_conservative_centroid_nodes(coords):
     env_poly = poly_from_coords(coords)
+    env_polygon_set = sg.PolygonSet([env_poly])
     env_segments = get_segments_from_coords(coords)
     cons_edges = get_env_conservative_edges(env_segments, env_poly)
     arr = sg.arrangement.Arrangement()
     for seg in env_segments:
         arr.insert(seg)
     for edge in cons_edges:
-        # draw(edge, color="blue")
-        arr.insert(edge)
-
+        if not edge.is_degenerate():
+            if segment_outside_polygon(edge, env_polygon_set): 
+                # draw(edge, color="blue")
+                arr.insert(edge)
     poly_list = build_list_of_polygons_from_arrangement(arr)
 
     adjacency_list = {} 
@@ -487,7 +498,7 @@ def get_adj_list_of_conservative_centroid_nodes(coords):
 
 
 def main():   
-    coords = coords_from_json("Envs/rooms3.json")
+    coords = coords_from_json("Envs/rooms4.json")
     # print(coords)
     env_poly = poly_from_coords(coords)
     draw(env_poly)
@@ -495,8 +506,10 @@ def main():
     adj_list = get_adj_list_of_conservative_centroid_nodes(coords)
     print(adj_list.keys())
     print(len(adj_list.keys()))
+    plt.axis("off")
     
     plt.show()
+    # plt.savefig("conservative_graph.svg", bbox_inches='tight')
 
 if __name__ == "__main__":
     main()

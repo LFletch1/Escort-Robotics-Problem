@@ -75,7 +75,7 @@ class EscortProblem:
             return None
 
 
-    def show_path(self, path):
+    def show_path(self, path, save_fig=False, filename=""):
         # Path is a list of tuples that represent pairs of coordinates to transition to in the environment
         # Example: [(2,11), (1,9), (2,6), (8,6)]
         state = self.environment.get_starting_state(path[0]) 
@@ -87,44 +87,74 @@ class EscortProblem:
         for next_pos in path[1:]:
             plt.clf()
             state = self.environment.transition_blackbox(state, next_pos)
-            # self.environment.draw_state(state)
+            self.environment.draw_state(state)
             draw(goal_point, color="green")
             # plt.show()
+
+        self.environment.draw_state(state)
+        i = 1
+        while i < len(path):
+            prev_point = sg.Point2(path[i-1][0],path[i-1][1])
+            curr_point = sg.Point2(path[i][0],path[i][1])
+            draw(sg.Segment2(prev_point, curr_point), color="black")
+            i += 1
+        draw(sg.Point2(path[0][0], path[0][1]), color="blue")
+        draw(sg.Point2(path[-1][0], path[-1][1]), color="red")
+        draw(goal_point, color="green")
+        plt.axis("off")
+        # plt.show()   
+
+        if save_fig:
+            plt.savefig(filename, bbox_inches='tight')
         return state
     
+    def save_path(self, path, filename, time):
+        file = open(filename, "w")
+        file.write(str(time) + " seconds\n")
+        for point in path:
+            file.write(str(point[0]) + "," + str(point[1]) + "\n")
+        
 
 
 def main():
+    # List of problem configurations, (Environment, (escort_start_position), (VIP_goal_position))
+    # problems = [("Envs/tetris_env.json", (2,10.5), (12.5, 1)),
+    #             ("Envs/rooms.json", (1, 1.667), (10, 4.5)),
+    #             ("Envs/rooms2.json", (2.5, 8.5), (8.5, 3)),
+    #             ("Envs/rooms3.json", (3.1, 5.3), (8.4, 5)),
+    # problems = [("Envs/new_env.json", (1, 1.5), (3.4, 7.4)),
+    #             ("Envs/new_env2.json", (1.5, 8.5), (7.5, 1.5)),
+    #             ("Envs/interesting.json", (7.25, 0.5), (4, 9.5)),
+    problems = [("Envs/new_env3.json", (9.667, 2.333), (2.4, 7.5)),
+                ("Envs/pursuit_fail.json", (0.667, 0.667), (4.5, 7.5)),
+                ("Envs/rooms4.json", (2.5, 6.5), (3, 1))]
+
+    for p in problems:
+        environment_file, escort_pos, vip_goal_pos = p
+        print("Finding path for", environment_file, "environment")
+        escort_prob = EscortProblem(environment_file, escort_pos, vip_goal_pos)
+        t1 = time.time()
+        path = escort_prob.bfs_safe_path()
+        t2 = time.time()
+        print(t2-t1, "seconds")
+        if path != None:
+            print("Path Found!")
+            escort_prob.show_path(path, save_fig=True, filename=environment_file.replace("Envs","solution_svgs").replace(".json", "_solution.svg"))
+            escort_prob.save_path(path, environment_file.replace("Envs", "solution_paths").replace(".json", "_path.txt"), (t2-t1))
+        else:
+            print("No safe path found :(")
+        
     # escort_prob = EscortProblem("Envs/tetris_env.json", (2,10.5), (12.5, 1))
     # escort_prob = EscortProblem("Envs/tetris_env.json", (8.0, 6.0), (12.5, 1)) # No safe path exists
     # escort_prob = EscortProblem("Envs/rooms.json", (1, 1.667), (10, 4.5))
     # escort_prob = EscortProblem("Envs/rooms.json", (1, 1.667), (1.5, 3))
-    escort_prob = EscortProblem("Envs/rooms2.json", (2.5, 8.5), (8.5, 3))
+    # escort_prob = EscortProblem("Envs/rooms2.json", (2.5, 8.5), (8.5, 3))
+    # escort_prob = EscortProblem("Envs/pursuit_fail.json", (0.667, 0.667), (5.5, 7.5)) # Environment which fails for pursuit-evasion problem
+    # escort_prob = EscortProblem("Envs/interesting.json", (7.25, 0.5), (4, 10.5))
     # escort_prob = EscortProblem("Envs/rooms3.json", (3.1, 5.3), (8.4, 5))
     # escort_prob = EscortProblem("Envs/new_env.json", (1, 1.5), (3.4, 7.4))
     # escort_prob = EscortProblem("Envs/new_env2.json", (1.5, 8.5), (7.5, 2.5))
     # escort_prob = EscortProblem("Envs/new_env3.json", (9.667, 2.889), (2.5, 7.5))
-    t1 = time.time()
-    path = escort_prob.bfs_safe_path()
-    t2 = time.time()
-    print(t2-t1, "seconds")
-    if path != None:
-        print("Path Found!")
-        state = escort_prob.show_path(path)
-    else:
-        print("No safe path found :(")
-    escort_prob.environment.draw_state(state)
-
-    i = 1
-    while i < len(path):
-        prev_point = sg.Point2(path[i-1][0],path[i-1][1])
-        curr_point = sg.Point2(path[i][0],path[i][1])
-        draw(sg.Segment2(prev_point, curr_point), color="black")
-        i += 1
-    draw(sg.Point2(path[0][0], path[0][1]), color="blue")
-    draw(sg.Point2(path[-1][0], path[-1][1]), color="red")
-    draw(sg.Point2(8.5, 3), color="green")
-    plt.savefig("rooms2_solution.png")
 
 
 if __name__ == "__main__":
