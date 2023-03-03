@@ -99,7 +99,7 @@ def true_ray_shooting_vertices(point1, point2, env_polygon_set): # Used to make 
         pass # should be handled by if not m conditional statment 
 
 def true_ray_shoot_single_point(point, target, env_polygon_set): # Used to make sure to not shoot rays between vertices who aren't pairs
-    # check if ray shot from point to target is a true ray shooting vertex at point 1
+    # check if ray shot from point to target is a true ray shooting vertex at point
     m = get_slope(point, target)
     if not m:
         # line is vertical, need to extend y directions only
@@ -350,7 +350,7 @@ def get_env_conservative_edges(env_segments, env_polygon):
     for seg in lines_of_sight_reflex_points:
         conservative_region_edges.append(seg) # NEW Line that doesn't exist in pursuit-evasion problem, but does in escort problem
         vec1 = seg.point(0) - seg.point(1) # Vector in direction from point 1 to point 2
-        vec2 = seg.point(1) - seg.point(0) # Vector Ray in direction of from point 2 to point 1
+        vec2 = seg.point(1) - seg.point(0) # Vector in direction of from point 2 to point 1
         ray1 = sg.Ray2(seg.point(0), vec1) # Ray starting at point 1
         ray2 = sg.Ray2(seg.point(1), vec2) # Ray starting at point 2
         intersecting1_points = []
@@ -381,14 +381,21 @@ def get_env_conservative_edges(env_segments, env_polygon):
                             continue
                         if true_ray_shoot_single_point(closest_point1, r, env_polygon_set):
                             if no_segments_between_points(r, closest_point1, env_segments, env_polygon_set):
-                                similarity = cosine_dist([float(seg.point(0).x()) - float(closest_point1.x()), float(seg.point(0).y()) - float(closest_point1.y())], [float(r.x()) - float(closest_point1.x()), float(r.y()) - float(closest_point1.x())])
-                                if not isnan(similarity):
-                                    if similarity > closest:
-                                        closest = similarity
-                                        target_point = r
-                    if target_point:
-                        new = sg.Segment2(closest_point1, target_point)
-                        conservative_region_edges.append(new)
+                                target = r
+                                vec = r - closest_point1 # vec from cloest
+                                ray = sg.Ray2(r, vec) # at point r 
+                                for edge in env_segments:
+                                    intersect = sg.intersection(ray, edge)
+                                    if isinstance(intersect, sg.Point2):
+                                        if intersect in reflex_points:
+                                            if true_ray_shoot_single_point(r, intersect, env_polygon_set):
+                                                continue # continue shooting ray
+                                            else:
+                                                target = intersect 
+                                        else:
+                                            target = intersect
+                                new = sg.Segment2(closest_point1, target)
+                                conservative_region_edges.append(new)
 
         if len(intersecting2_points):
             closest_point2 = closest_point(seg.point(1), intersecting2_points)
@@ -404,14 +411,21 @@ def get_env_conservative_edges(env_segments, env_polygon):
                             continue
                         if true_ray_shoot_single_point(closest_point2, r, env_polygon_set):
                             if no_segments_between_points(r, closest_point2, env_segments, env_polygon_set):
-                                similarity = cosine_dist([float(seg.point(1).x()) - float(closest_point2.x()), float(seg.point(1).y()) - float(closest_point2.y())], [float(r.x()) - float(closest_point2.x()), float(r.y()) - float(closest_point2.x())])
-                                if not isnan(similarity):
-                                    if similarity > closest:
-                                        closest = similarity
-                                        target_point = r
-                    if target_point:
-                        new = sg.Segment2(closest_point2, target_point)
-                        conservative_region_edges.append(new)
+                                target = r
+                                vec = r - closest_point2 # vec from cloest
+                                ray = sg.Ray2(r, vec) # at point r 
+                                for edge in env_segments:
+                                    intersect = sg.intersection(ray, edge)
+                                    if isinstance(intersect, sg.Point2):
+                                        if intersect in reflex_points:
+                                            if true_ray_shoot_single_point(r, intersect, env_polygon_set):
+                                                continue # continue shooting ray
+                                            else:
+                                                target = intersect 
+                                        else:
+                                            target = intersect
+                                new = sg.Segment2(closest_point2, target)
+                                conservative_region_edges.append(new)
 
     # Some duplicates may have been created along the way. Remove them
     duplicate_indices = []
@@ -498,7 +512,8 @@ def get_adj_list_of_conservative_centroid_nodes(coords):
 
 
 def main():   
-    coords = coords_from_json("Envs/rooms4.json")
+    coords = coords_from_json("Envs/interesting.json")
+    # coords = coords_from_json("Envs/rooms.json")
     # print(coords)
     env_poly = poly_from_coords(coords)
     draw(env_poly)
@@ -508,8 +523,8 @@ def main():
     print(len(adj_list.keys()))
     plt.axis("off")
     
-    plt.show()
-    # plt.savefig("conservative_graph.svg", bbox_inches='tight')
+    # plt.show()
+    plt.savefig("position_graph.svg", bbox_inches='tight')
 
 if __name__ == "__main__":
     main()

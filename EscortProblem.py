@@ -23,10 +23,14 @@ class EscortProblem:
         '''
         self.start_pos = start_pos
         self.vip_goal_pos = vip_goal_pos
+        self.vip_start_point = None
 
         coords = coords_from_json(env_file_path)
         self.coordinate_adj_list = get_adj_list_of_conservative_centroid_nodes(coords)
         gp = GeneralPolygon.load_from_json(env_file_path, verbose=False)
+        goal_point = sg.Point2(vip_goal_pos[0], vip_goal_pos[1])
+        if not gp.locate(goal_point): # Goal point is not inside environment polygon
+            raise Exception("VIP Goal Position must be inside environment for a solution to potentially exist")
         gp.build_arrangement(verbose=True)
         np_half = np.array([])
         for ha in gp.arrangement.halfedges:
@@ -37,7 +41,7 @@ class EscortProblem:
     def bfs_safe_path(self): 
         '''Breadth first search of graph to find path which makes a VIP safezones contain the goal point'''
         print("Searching for Safe Path")
-        start_state = self.environment.get_starting_state(self.start_pos)
+        start_state, vip_start_point = self.environment.get_starting_state(self.start_pos)
         visited = {}
         visited[start_state] = True
         queue = deque([start_state]) 
@@ -78,18 +82,21 @@ class EscortProblem:
     def show_path(self, path, save_fig=False, filename=""):
         # Path is a list of tuples that represent pairs of coordinates to transition to in the environment
         # Example: [(2,11), (1,9), (2,6), (8,6)]
-        state = self.environment.get_starting_state(path[0]) 
+        state, vip_start_point = self.environment.get_starting_state(path[0], showing=True) 
         self.environment.draw_state(state)
 
         goal_point = sg.Point2(self.vip_goal_pos[0], self.vip_goal_pos[1])
-        draw(goal_point, color="green")
-        # plt.show()
+        draw(goal_point, color="#a600ff")
+        if not save_fig:
+            plt.show()
         for next_pos in path[1:]:
             plt.clf()
-            state = self.environment.transition_blackbox(state, next_pos)
+            state = self.environment.transition_blackbox(state, next_pos, showing=True)
             self.environment.draw_state(state)
-            draw(goal_point, color="green")
-            # plt.show()
+            draw(goal_point, color="#a600ff")
+            draw(vip_start_point, color="#e97419")
+            if not save_fig:
+                plt.show()
 
         self.environment.draw_state(state)
         i = 1
@@ -98,36 +105,44 @@ class EscortProblem:
             curr_point = sg.Point2(path[i][0],path[i][1])
             draw(sg.Segment2(prev_point, curr_point), color="black")
             i += 1
-        draw(sg.Point2(path[0][0], path[0][1]), color="blue")
+        draw(sg.Point2(path[0][0], path[0][1]), color="#0000ff") # blue
         draw(sg.Point2(path[-1][0], path[-1][1]), color="red")
-        draw(goal_point, color="green")
+        draw(goal_point, color="#a600ff")  # green
+        draw(vip_start_point, color="#e97419") # Orange
         plt.axis("off")
-        # plt.show()   
 
         if save_fig:
-            plt.savefig(filename, bbox_inches='tight')
+            plt.savefig(filename, bbox_inches='tight', transparent=True)
+        else:
+            plt.show()
         return state
     
     def save_path(self, path, filename, time):
         file = open(filename, "w")
         file.write(str(time) + " seconds\n")
+        file.write(f"Escort Starting Position: {self.start_pos}\n")
+        file.write(f"VIP Starting Position: {self.vip_start_point}\n")
+        file.write(f"VIP Goal Position: {self.vip_goal_pos}\n")
         for point in path:
             file.write(str(point[0]) + "," + str(point[1]) + "\n")
         
 
 
-def main():
+def main(): 
     # List of problem configurations, (Environment, (escort_start_position), (VIP_goal_position))
     # problems = [("Envs/tetris_env.json", (2,10.5), (12.5, 1)),
     #             ("Envs/rooms.json", (1, 1.667), (10, 4.5)),
     #             ("Envs/rooms2.json", (2.5, 8.5), (8.5, 3)),
     #             ("Envs/rooms3.json", (3.1, 5.3), (8.4, 5)),
-    # problems = [("Envs/new_env.json", (1, 1.5), (3.4, 7.4)),
-    #             ("Envs/new_env2.json", (1.5, 8.5), (7.5, 1.5)),
-    #             ("Envs/interesting.json", (7.25, 0.5), (4, 9.5)),
-    problems = [("Envs/new_env3.json", (9.667, 2.333), (2.4, 7.5)),
-                ("Envs/pursuit_fail.json", (0.667, 0.667), (4.5, 7.5)),
-                ("Envs/rooms4.json", (2.5, 6.5), (3, 1))]
+    #             ("Envs/new_env.json", (1, 1.5), (3.4, 7.4)),
+    #             ("Envs/interesting.json", (3.75, 0.5), (3.5, 10.5)),
+    #             ("Envs/new_env3.json", (9.667, 2.333), (2.4, 7.5)),
+    #             ("Envs/pursuit_fail.json", (0.667, 0.667), (4.5, 7.5))]
+    problems = [("Envs/interesting.json", (3.75, 0.5), (3.5, 10.5))]
+
+    # problems = [("Envs/tetris_env.json", (2,10.5), (12.5, 1))]
+    # ("Envs/new_env2.json", (1.5, 8.5), (7.5, 1.5)),
+    # ("Envs/rooms4.json", (2.5, 6.5), (3, 1))
 
     for p in problems:
         environment_file, escort_pos, vip_goal_pos = p
@@ -144,18 +159,5 @@ def main():
         else:
             print("No safe path found :(")
         
-    # escort_prob = EscortProblem("Envs/tetris_env.json", (2,10.5), (12.5, 1))
-    # escort_prob = EscortProblem("Envs/tetris_env.json", (8.0, 6.0), (12.5, 1)) # No safe path exists
-    # escort_prob = EscortProblem("Envs/rooms.json", (1, 1.667), (10, 4.5))
-    # escort_prob = EscortProblem("Envs/rooms.json", (1, 1.667), (1.5, 3))
-    # escort_prob = EscortProblem("Envs/rooms2.json", (2.5, 8.5), (8.5, 3))
-    # escort_prob = EscortProblem("Envs/pursuit_fail.json", (0.667, 0.667), (5.5, 7.5)) # Environment which fails for pursuit-evasion problem
-    # escort_prob = EscortProblem("Envs/interesting.json", (7.25, 0.5), (4, 10.5))
-    # escort_prob = EscortProblem("Envs/rooms3.json", (3.1, 5.3), (8.4, 5))
-    # escort_prob = EscortProblem("Envs/new_env.json", (1, 1.5), (3.4, 7.4))
-    # escort_prob = EscortProblem("Envs/new_env2.json", (1.5, 8.5), (7.5, 2.5))
-    # escort_prob = EscortProblem("Envs/new_env3.json", (9.667, 2.889), (2.5, 7.5))
-
-
 if __name__ == "__main__":
     main()

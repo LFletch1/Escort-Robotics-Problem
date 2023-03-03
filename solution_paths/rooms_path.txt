@@ -1,4 +1,7 @@
-220.74242186546326 seconds
+222.45858693122864 seconds
+Escort Starting Position: (1, 1.667)
+VIP Starting Position: None
+VIP Goal Position: (10, 4.5)
 1,1.667
 0.667,3.156
 1.265,3.583

@@ -93,7 +93,7 @@ class Environment:
 
         return visibile_edges
 
-    def transition_blackbox(self, state, new_position):
+    def transition_blackbox(self, state, new_position, showing=False):
         '''
         Given a state, and a position for the escort to move to return new state corresponding to new escort position
         '''   
@@ -149,23 +149,32 @@ class Environment:
 
         polygon_vip = sg.PolygonSet([px for px in vip_contain])
         new_vip_safezones = polygon_vip
-        new_state = State(position=new_position, parent=state, contaminated_shadows=new_shadows,\
-                            safezones=new_vip_safezones, neighbors=self.adj_list[new_position])
-
+        if not showing:
+            new_state = State(position=new_position, parent=state, contaminated_shadows=new_shadows,\
+                                safezones=new_vip_safezones, neighbors=self.adj_list[new_position])
+        else:
+            new_state = State(position=new_position, parent=state, contaminated_shadows=new_shadows,\
+                                safezones=new_vip_safezones, neighbors=None)
         return new_state
 
-    def get_starting_state(self, pos):
+    def get_starting_state(self, pos, showing=False):
         '''Return starting state, every shadow is contaminated'''
         p = sg.Point2(pos[0], pos[1])
         v_poly = self.compute_visib_pursue(p)
         start_shadows = self.compute_shadows(v_poly)
         start_safezones = self.compute_safezones(p)
-        return State(pos, parent=None, contaminated_shadows=start_shadows, safezones=start_safezones, neighbors=self.adj_list[pos])
+        sz = start_safezones.polygons[0]
+        start_safezones = sg.PolygonSet([sz]) # Only one shadow is initially vip contaminated
+        vip_starting_point = sg.centroid(sz.outer_boundary()) # Set VIP starting point to center of initial safezone
+        if not showing:
+            return State(pos, parent=None, contaminated_shadows=start_shadows, safezones=start_safezones, neighbors=self.adj_list[pos]), vip_starting_point
+        else:
+            return State(pos, parent=None, contaminated_shadows=start_shadows, safezones=start_safezones, neighbors=None), vip_starting_point
 
     def draw_state(self, state):
         '''Draw the environment based on the state argument'''
-        draw(self.gp)
+        draw(self.gp, facecolor="#ffffff")
         draw(state.safezones, facecolor="lightgreen")
-        draw(state.contaminated_shadows, facecolor="pink")
+        draw(state.contaminated_shadows, facecolor="#ff2d2d")
         draw(state.as_point(), color="blue")    
     
