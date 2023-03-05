@@ -37,7 +37,7 @@ def interpolate_points_with_fixed_distance(point1, point2, d):
 
 
 def interpolate_path(path, speed):
-    interpolated_path = [path[0]] # Keep starting point, then don't include starting point interpolations
+    interpolated_path = [path[0]] # Keep starting point, then don't include starting point in interpolations
     for i in range(1,len(path)):
         p1 = path[i-1]
         p2 = path[i]
@@ -92,13 +92,9 @@ def make_escort_problem_video(env_file, video_name):
         os.mkdir(pic_file_dir)
     prob = EscortProblem(env_file, escort_start_pos, VIP_goal_pos)
 
-    curr_state, vip_start = prob.environment.get_starting_state(path[0], showing=True)
-    prev_state = None
+    curr_state, vip_start_point = prob.environment.get_starting_state(path[0], showing=True)
     vip_end_point = sg.Point2(VIP_goal_pos[0], VIP_goal_pos[1])
-    curr_vip_pos = vip_start
-    # vip_escort_positions = [] # List of pairs of positions, one representing the escort position that corresponds to when the VIP needs to move
     path_states = [curr_state]
-    points = []
     for pos in path:
         curr_state = prob.environment.transition_blackbox(curr_state, pos, showing=True)
         path_states.append(curr_state)
@@ -107,7 +103,7 @@ def make_escort_problem_video(env_file, video_name):
     # can be traced to the solution
     # Need to do this by backtracking from the solution state to each state
     future_solvable_zones = [poly.outer_boundary() for poly in path_states[-1].safezones.polygons]
-    solvable_safe_zones = [future_solvable_zones]
+    states_solvable_safe_zones = [future_solvable_zones]
     for curr_state in path_states[-2::-1]:
         curr_state_solvable_safe_zones = []
         for poly1 in curr_state.safezones.polygons:
@@ -115,90 +111,87 @@ def make_escort_problem_video(env_file, video_name):
             for poly2 in future_solvable_zones:
                 if sg.boolean_set.intersect(poly1, poly2): # Safezone in current state has overlap with future solveable safezone, thus it is also a solvable safezone
                     curr_state_solvable_safe_zones.append(poly1)
-        solvable_safe_zones.insert(0, curr_state_solvable_safe_zones)
+        states_solvable_safe_zones.insert(0, curr_state_solvable_safe_zones)
         future_solvable_zones = curr_state_solvable_safe_zones
  
-    print(solvable_safe_zones)
+    # # Sanity Check
+    # for solve_safezones in states_solvable_safe_zones:
+    #     draw(prob.environment.gp)
+    #     for sz in solve_safezones:
+    #         draw(sz, facecolor="blue")
+    #     plt.show()
 
-    for solve_safezones in solvable_safe_zones:
-        draw(prob.environment.gp)
-        for sz in solve_safezones:
-            draw(sz, facecolor="blue")
-        plt.show()
-    exit()
-
-
-    #     for poly in curr_state.safezones.polygons:
-    #         points.append(sg.centroid(poly.outer_boundary()))
-    #     # print(sg.centroid(curr_state.safezones.polygons[0].outer_boundary()))
-    #     curr_state = prob.environment.transition_blackbox(curr_state, pos, showing=True)
-    #     # path_states.append(curr_state)
-    # draw(prob.environment.gp)
-    # for point in points:
-    #     draw(point)
-    # plt.show()
-    # Go through the states in reverse order, if a state is found where the safezone is disconnected from the VIP position,
-    # then we know we need to move the VIP to that position as soon as it becomes available
-    # reversed_path_states = path_states[::-1]
-    # for state in reversed_path_states:
-    #     if state.safezones.polygon[]
-
-    # print(vip_escort_positions)
-    # print(path_states)
-    exit()
+    # VIPs path can be thought of as a series of start positions and goals posisitions start_pos[i] corresponds to the goal_pos[i]
+    start_points = [vip_start_point]
+    goal_points = [vip_end_point]
+    curr_start = vip_start_point
+    for solvable_sz in states_solvable_safe_zones:
+        safezone_as_set = sg.PolygonSet(solvable_sz)
+        if not safezone_as_set.locate(curr_start): # VIP start position not contained within solvable safezone, thus VIP needs to move there
+            intermediate_point = sg.centroid(solvable_sz[0])
+            goal_points.insert(0, intermediate_point)
+            start_points.append(intermediate_point)
+            curr_start = intermediate_point
 
     interpolated_path = interpolate_path(path, speed)
     curr_state, vip_start = prob.environment.get_starting_state(interpolated_path[0], showing=True)
-    vip_end_point = sg.Point2(VIP_goal_pos[0], VIP_goal_pos[1])
-    draw(vip_start, color="#e97419")
+    # vip_end_point = sg.Point2(VIP_goal_pos[0], VIP_goal_pos[1])
+    k = 0
+    curr_vip_start = start_points[k]
+    curr_vip_goal = goal_points[k]
+    draw(curr_vip_start, color="#e97419")
     prob.environment.draw_state(curr_state)
     plt.savefig(pic_file_dir + "00000", bbox_inches='tight')
     f = 0
     for pos in interpolated_path[1:]:
+        # Escort Movements
         curr_state = prob.environment.transition_blackbox(curr_state, pos,showing=True)
         prob.environment.draw_state(curr_state)
-        draw(vip_start, color="#e97419")
+        draw(curr_vip_start, color="#e97419")
         draw(vip_end_point, color="#a600ff")
-        plt.axis("off")
-        plt.savefig(pic_file_dir + str(f).zfill(5), bbox_inches='tight')
-        plt.clf()
-        f += 1 
-
-    sz_environment = PolygonEnvironment()
-    safe_zone = curr_state.safezones.polygons[0].outer_boundary()
-    poly_vertices = []
-    list_of_holes = [[(100,100),(100,101),(101,101),(101,100)]] # Library I'm using doesn't work if no holes are included in the environment
-    for v in safe_zone.vertices:
-        poly_vertices.append((v.x(), v.y()))
-    sz_environment.store(poly_vertices, list_of_holes, validate=False)
-    sz_environment.prepare()
-    start_coords = (vip_start.x(), vip_start.y())
-    vip_path, vip_path_length = sz_environment.find_shortest_path(start_coords, VIP_goal_pos)
-    
-    vip_interpolated_path = interpolate_path(vip_path, speed)
-    for vip_pos in vip_interpolated_path:
-        prob.environment.draw_state(curr_state)
-        draw(vip_end_point, color="#a600ff")
-        draw(sg.Point2(vip_pos[0], vip_pos[1]), color="#e97419")
         plt.axis("off")
         plt.savefig(pic_file_dir + str(f).zfill(5), bbox_inches='tight')
         plt.clf()
         f += 1
+        # VIP Movements
+        if curr_state.safezones.locate(curr_vip_goal):
+            sz_environment = PolygonEnvironment()
+            safe_zone = curr_state.safezones.polygons[0].outer_boundary() # this is probably buggy
+            poly_vertices = []
+            list_of_holes = [[(100,100),(100,101),(101,101),(101,100)]] # Library I'm using doesn't work if no holes are included in the environment, so here are some BS holes
+            for v in safe_zone.vertices:
+                poly_vertices.append((v.x(), v.y()))
+            sz_environment.store(poly_vertices, list_of_holes, validate=False)
+            sz_environment.prepare()
+            start_coords = (curr_vip_start.x(), curr_vip_start.y())
+            goal_coords = (curr_vip_goal.x(), curr_vip_goal.y())
+            vip_path, vip_path_length = sz_environment.find_shortest_path(start_coords, goal_coords)
+            vip_interpolated_path = interpolate_path(vip_path, speed)
+            for vip_pos in vip_interpolated_path:
+                prob.environment.draw_state(curr_state)
+                draw(vip_end_point, color="#a600ff")
+                draw(sg.Point2(vip_pos[0], vip_pos[1]), color="#e97419")
+                plt.axis("off")
+                plt.savefig(pic_file_dir + str(f).zfill(5), bbox_inches='tight')
+                plt.clf()
+                f += 1
+            k += 1
+            if k == len(start_points):
+                break # Reached final goal position
+            else:
+                curr_vip_start = start_points[k]
+                curr_vip_goal = goal_points[k]
     
     images_to_video(pic_file_dir, video_name, 30)
 
 def main():
     env_files = ["../Envs/rooms.json",
                 "../Envs/rooms2.json",
+                "../Envs/rooms3.json",
                 "../Envs/interesting.json",
                 "../Envs/pursuit_fail.json",
                 "../Envs/new_env.json",
                 "../Envs/new_env3.json"]
-    # env_files = ["../Envs/tetris_env.json"]
-                # "../Envs/rooms3.json",
-    env_files = ["../Envs/rooms3.json"]
-    # env_files = ["../Envs/tetris_env.json"]
-    # env_files = ["../Envs/interesting.json"]
     for env_file in env_files:
         video_name = env_file.replace("../Envs/", "").replace(".json", "_video.mp4")
         make_escort_problem_video(env_file, video_name)
