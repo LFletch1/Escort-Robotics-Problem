@@ -4,6 +4,14 @@ from skgeom.draw import draw
 import matplotlib.pyplot as plt
 import math
 from scikit_utils import *
+from numpy import dot, isnan
+from numpy.linalg import norm
+
+
+def cosine_dist(a, b):
+    cos_sim = dot(a, b)/(norm(a)*norm(b))
+    return cos_sim
+
 
 def poly_from_coords(coords):
     point2List = []
@@ -42,6 +50,83 @@ def get_shared_point(seg1, seg2):
         return seg1.point(1)
     else:
         return None
+
+def get_slope(point1, point2):
+    if (point2.x() - point1.x()) == 0:
+        return None
+    # return ((point2.y() - point1.y()) / (point2.x() - point1.x()))
+    dy = point2.y() - point1.y()
+    dx = point2.x() - point1.x()
+    # return dy, dx # Return it in change in y and change in x form
+    return dy / dx
+
+def true_ray_shooting_vertices(point1, point2, env_polygon_set): # Used to make sure to not shoot rays between vertices who aren't pairs
+    m = get_slope(point1, point2)
+    if not m:
+        # line is vertical, need to extend y directions only
+        # FOR NOW RETURN TRUE
+        return True
+    if point1.x() > point2.x(): # extend point 1 to the right and point 2 to the left
+        ext1_x = point1.x() + 0.1 
+        ext1_y = m * (0.1) + point1.y()
+        ext2_x = point2.x() - 0.1 
+        ext2_y = m * (-0.1) + point2.y()
+
+        extended_point1 = sg.Point2(ext1_x, ext1_y)
+        extended_point2 = sg.Point2(ext2_x, ext2_y)
+        # draw(extended_point1, color="orange")
+        # draw(extended_point2, color="orange")
+        if not env_polygon_set.locate(extended_point1) or not env_polygon_set.locate(extended_point2):
+            return False
+        else:
+            return True
+        
+    elif point1.x() < point2.x(): # extend point 1 to the left and point 2 to the rig
+        ext1_x = point1.x() - 0.1 
+        ext1_y = m * (-0.1) + point1.y()
+        ext2_x = point2.x() + 0.1 
+        ext2_y = m * (0.1) + point2.y()
+        extended_point1 = sg.Point2(ext1_x, ext1_y)
+        extended_point2 = sg.Point2(ext2_x, ext2_y)
+        # draw(extended_point1, color="orange")
+        # draw(extended_point2, color="orange")
+        if not env_polygon_set.locate(extended_point1) or not env_polygon_set.locate(extended_point2):
+            return False
+        else:
+            return True
+    
+    else: # They are equal 
+        pass # should be handled by if not m conditional statment 
+
+def true_ray_shoot_single_point(point, target, env_polygon_set): # Used to make sure to not shoot rays between vertices who aren't pairs
+    # check if ray shot from point to target is a true ray shooting vertex at point
+    m = get_slope(point, target)
+    if not m:
+        # line is vertical, need to extend y directions only
+        # FOR NOW RETURN TRUE
+        return True
+    if point.x() > target.x(): # extend target to left
+        t_x = target.x() - 0.1 
+        t_y = m * (-0.1) + target.y()
+
+        target_extension = sg.Point2(t_x, t_y)
+        if not env_polygon_set.locate(target_extension):
+            return False
+        else:
+            return True
+        
+    elif point.x() < target.x(): # extend target right
+        t_x = target.x() + 0.1 
+        t_y = m * (0.1) + target.y()
+
+        target_extension = sg.Point2(t_x, t_y)
+        if not env_polygon_set.locate(target_extension):
+            return False
+        else:
+            return True
+    
+    else: # They are equal 
+        pass # should be handled by if not m conditional statment 
 
 
 def reflex_angle_point(seg1, seg2, polygon_set):
@@ -88,7 +173,6 @@ def get_environment_reflex_points(segments, env_polygon):
     last_point = reflex_angle_point(segments[0], segments[-1], polygon_set)
     if last_point:
         reflex_angle_points.append(last_point) 
-
     return reflex_angle_points
 
 
@@ -135,6 +219,28 @@ def equal_segments(seg1, seg2):
     elif seg1.point(0) == seg2.point(1) and seg1.point(1) == seg2.point(0):
         return True
     return False
+
+def no_segments_between_points(point1, point2, segments, env_polygon_set):
+    line = sg.Segment2(point1, point2)
+    no_intersections = True
+    for seg in segments:
+        intersect = sg.intersection(line, seg)
+                
+        if isinstance(intersect, sg.Segment2):
+            no_intersections = False
+            break
+            
+        m_p = midpoint(line)
+        if isinstance(intersect, sg.Point2):
+            if intersect != line.point(0) and intersect != line.point(1):
+                no_intersections = False
+                break
+            if not env_polygon_set.locate(m_p):
+                no_intersections = False
+                break
+
+    return no_intersections
+
 
 
 def get_env_conservative_edges(env_segments, env_polygon):
@@ -213,35 +319,38 @@ def get_env_conservative_edges(env_segments, env_polygon):
                 conservative_edge = sg.Segment2(closest_point1, r_point)
                 conservative_region_edges.append(conservative_edge)
 
-    # Draw outward rays from reflex points that have are in the line of sight of each other
+    # Draw outward rays from reflex points that are in the line of sight of each other
     lines_of_sight_reflex_points = []
     for j in range(len(reflex_points)):
         for k in range(j+1, len(reflex_points)):
             reflex1 = reflex_points[j]
             reflex2 = reflex_points[k]
-            reflex_line = sg.Segment2(reflex1, reflex2)
-            no_intersections = True
-            for seg in env_segments:
-                intersect = sg.intersection(reflex_line, seg)
-                if isinstance(intersect, sg.Segment2):
-                    no_intersections = False
-                    break
+            if true_ray_shooting_vertices(reflex1, reflex2, env_polygon_set):
+                reflex_line = sg.Segment2(reflex1, reflex2)
+                # draw(reflex_line, color='green')
+                no_intersections = True
+                for seg in env_segments:
+                    intersect = sg.intersection(reflex_line, seg)
                     
-                m_p = midpoint(reflex_line)
-                if isinstance(intersect, sg.Point2):
-                    if intersect != seg.point(0) and intersect != seg.point(1):
+                    if isinstance(intersect, sg.Segment2):
                         no_intersections = False
                         break
-                    elif not env_polygon_set.locate(m_p):
-                        no_intersections = False
-                        break
-
-            if no_intersections:
-                lines_of_sight_reflex_points.append(reflex_line)
+                        
+                    m_p = midpoint(reflex_line)
+                    if isinstance(intersect, sg.Point2):
+                        if intersect != seg.point(0) and intersect != seg.point(1):
+                            no_intersections = False
+                            break
+                        if not env_polygon_set.locate(m_p):
+                            no_intersections = False
+                            break
+                if no_intersections:
+                    lines_of_sight_reflex_points.append(reflex_line)
 
     for seg in lines_of_sight_reflex_points:
+        conservative_region_edges.append(seg) # NEW Line that doesn't exist in pursuit-evasion problem, but does in escort problem
         vec1 = seg.point(0) - seg.point(1) # Vector in direction from point 1 to point 2
-        vec2 = seg.point(1) - seg.point(0) # Vector Ray in direction of from point 2 to point 1
+        vec2 = seg.point(1) - seg.point(0) # Vector in direction of from point 2 to point 1
         ray1 = sg.Ray2(seg.point(0), vec1) # Ray starting at point 1
         ray2 = sg.Ray2(seg.point(1), vec2) # Ray starting at point 2
         intersecting1_points = []
@@ -265,6 +374,28 @@ def get_env_conservative_edges(env_segments, env_polygon):
                 m_p = midpoint(conservative_edge)
                 if env_polygon_set.locate(m_p):
                     conservative_region_edges.append(conservative_edge)
+                    closest = -100
+                    target_point = None
+                    for r in reflex_points:
+                        if r == seg.point(0) or r == seg.point(1):
+                            continue
+                        if true_ray_shoot_single_point(closest_point1, r, env_polygon_set):
+                            if no_segments_between_points(r, closest_point1, env_segments, env_polygon_set):
+                                target = r
+                                vec = r - closest_point1 # vec from cloest
+                                ray = sg.Ray2(r, vec) # at point r 
+                                for edge in env_segments:
+                                    intersect = sg.intersection(ray, edge)
+                                    if isinstance(intersect, sg.Point2):
+                                        if intersect in reflex_points:
+                                            if true_ray_shoot_single_point(r, intersect, env_polygon_set):
+                                                continue # continue shooting ray
+                                            else:
+                                                target = intersect 
+                                        else:
+                                            target = intersect
+                                new = sg.Segment2(closest_point1, target)
+                                conservative_region_edges.append(new)
 
         if len(intersecting2_points):
             closest_point2 = closest_point(seg.point(1), intersecting2_points)
@@ -273,13 +404,36 @@ def get_env_conservative_edges(env_segments, env_polygon):
                 m_p = midpoint(conservative_edge)
                 if env_polygon_set.locate(m_p):
                     conservative_region_edges.append(conservative_edge)
+                    closest = -100
+                    target_point = None
+                    for r in reflex_points:
+                        if r == seg.point(0) or r == seg.point(1):
+                            continue
+                        if true_ray_shoot_single_point(closest_point2, r, env_polygon_set):
+                            if no_segments_between_points(r, closest_point2, env_segments, env_polygon_set):
+                                target = r
+                                vec = r - closest_point2 # vec from cloest
+                                ray = sg.Ray2(r, vec) # at point r 
+                                for edge in env_segments:
+                                    intersect = sg.intersection(ray, edge)
+                                    if isinstance(intersect, sg.Point2):
+                                        if intersect in reflex_points:
+                                            if true_ray_shoot_single_point(r, intersect, env_polygon_set):
+                                                continue # continue shooting ray
+                                            else:
+                                                target = intersect 
+                                        else:
+                                            target = intersect
+                                new = sg.Segment2(closest_point2, target)
+                                conservative_region_edges.append(new)
 
     # Some duplicates may have been created along the way. Remove them
     duplicate_indices = []
     for i in range(len(conservative_region_edges)):
         for j in range(i+1, len(conservative_region_edges)):
             if equal_segments(conservative_region_edges[i], conservative_region_edges[j]):
-                duplicate_indices.append(j)
+                if j not in duplicate_indices:
+                    duplicate_indices.append(j)
     duplicate_indices.sort(reverse=True)
     for idx in duplicate_indices:
         conservative_region_edges.pop(idx)
@@ -315,18 +469,29 @@ def coords_from_json(file_path):
         # Assumes only one contour, doesn't support polygons with holes
         return coordinates
 
+def segment_outside_polygon(seg, polygon_set):
+    mp1 = midpoint(seg)
+    if polygon_set.locate(mp1):
+        m2 = midpoint(sg.Segment2(seg.point(0), mp1))
+        m3 = midpoint(sg.Segment2(seg.point(1), mp1))
+        if polygon_set.locate(m2) and polygon_set.locate(m3):
+            return True
+    return False
+
 
 def get_adj_list_of_conservative_centroid_nodes(coords):
     env_poly = poly_from_coords(coords)
+    env_polygon_set = sg.PolygonSet([env_poly])
     env_segments = get_segments_from_coords(coords)
     cons_edges = get_env_conservative_edges(env_segments, env_poly)
     arr = sg.arrangement.Arrangement()
     for seg in env_segments:
         arr.insert(seg)
     for edge in cons_edges:
-        # draw(edge, color="blue")
-        arr.insert(edge)
-
+        if not edge.is_degenerate():
+            if segment_outside_polygon(edge, env_polygon_set): 
+                # draw(edge, color="blue")
+                arr.insert(edge)
     poly_list = build_list_of_polygons_from_arrangement(arr)
 
     adjacency_list = {} 
@@ -347,15 +512,19 @@ def get_adj_list_of_conservative_centroid_nodes(coords):
 
 
 def main():   
-    coords = coords_from_json("Envs/new_env3.json")
-    print(coords)
+    coords = coords_from_json("Envs/interesting.json")
+    # coords = coords_from_json("Envs/rooms.json")
+    # print(coords)
     env_poly = poly_from_coords(coords)
     draw(env_poly)
 
     adj_list = get_adj_list_of_conservative_centroid_nodes(coords)
     print(adj_list.keys())
+    print(len(adj_list.keys()))
+    plt.axis("off")
     
-    plt.show()
+    # plt.show()
+    plt.savefig("position_graph.svg", bbox_inches='tight')
 
 if __name__ == "__main__":
     main()
