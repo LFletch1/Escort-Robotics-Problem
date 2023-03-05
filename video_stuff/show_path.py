@@ -106,13 +106,26 @@ def make_escort_problem_video(env_file, video_name):
     # Need to calculate VIP-reachable-solvable safezones. These represent safe-zones that are reachable and that are apart of the safe-zones that 
     # can be traced to the solution
     # Need to do this by backtracking from the solution state to each state
-    prev_state = path_states[-1]
-    solvable_safe_zones = [[poly.outer_boundary() for poly in prev_state.safezones.polygons]]
-    print(solvable_safe_zones)
+    future_solvable_zones = [poly.outer_boundary() for poly in path_states[-1].safezones.polygons]
+    solvable_safe_zones = [future_solvable_zones]
     for curr_state in path_states[-2::-1]:
-        for poly in curr_state.safezones.polygons
-        prev_state = curr_state
-        
+        curr_state_solvable_safe_zones = []
+        for poly1 in curr_state.safezones.polygons:
+            poly1 = poly1.outer_boundary()
+            for poly2 in future_solvable_zones:
+                if sg.boolean_set.intersect(poly1, poly2): # Safezone in current state has overlap with future solveable safezone, thus it is also a solvable safezone
+                    curr_state_solvable_safe_zones.append(poly1)
+        solvable_safe_zones.insert(0, curr_state_solvable_safe_zones)
+        future_solvable_zones = curr_state_solvable_safe_zones
+ 
+    print(solvable_safe_zones)
+
+    for solve_safezones in solvable_safe_zones:
+        draw(prob.environment.gp)
+        for sz in solve_safezones:
+            draw(sz, facecolor="blue")
+        plt.show()
+    exit()
 
 
     #     for poly in curr_state.safezones.polygons:
