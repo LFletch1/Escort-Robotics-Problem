@@ -107,7 +107,7 @@ class EscortProblem:
             i += 1
         draw(sg.Point2(path[0][0], path[0][1]), color="#0000ff") # blue
         draw(sg.Point2(path[-1][0], path[-1][1]), color="red")
-        draw(goal_point, color="#a600ff")  # green
+        draw(goal_point, color="#a600ff")  # purple
         draw(vip_start_point, color="#e97419") # Orange
         plt.axis("off")
 
